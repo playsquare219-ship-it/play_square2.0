@@ -1,0 +1,282 @@
+"use client"
+
+import { useEffect, useState, useRef } from 'react'
+import { ArrowLeft } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/auth-context'
+import { useToast } from '@/hooks/use-toast'
+import { Button } from '@/components/ui/button'
+import { getNotifications, markNotificationsRead, respondToTeamJoinRequest, deleteTeamJoinRequest, respondToMatchRequest, cancelMatchRequest } from '@/lib/client/api'
+import type { Notification } from '@/types'
+
+export default function NotificationsPage() {
+  const router = useRouter()
+  const { isAuthenticated } = useAuth()
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [page, setPage] = useState(0)
+  const loaderRef = useRef<HTMLDivElement | null>(null)
+  const { toast } = useToast()
+
+  const loadNotifications = async (nextPage = 0) => {
+    if (nextPage === 0) {
+      setLoading(true)
+    } else {
+      setLoadingMore(true)
+    }
+
+    try {
+      const offset = nextPage * 5
+      const result = await getNotifications(5, offset)
+      setNotifications((prev) => (nextPage === 0 ? result.notifications : [...prev, ...result.notifications]))
+      setHasMore(result.hasMore)
+      setPage(nextPage)
+    } catch (error) {
+      toast({ title: 'Failed to load notifications', description: 'Please try again.', variant: 'destructive' })
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/auth')
+      return
+    }
+
+    void loadNotifications(0)
+  }, [isAuthenticated, router])
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasMore && !loadingMore && !loading) {
+          void loadNotifications(page + 1)
+        }
+      },
+      { rootMargin: '100px' }
+    )
+
+    if (loaderRef.current) {
+      observer.observe(loaderRef.current)
+    }
+
+    return () => observer.disconnect()
+  }, [hasMore, loadingMore, loading, page])
+
+  const [processingRequestIds, setProcessingRequestIds] = useState<string[]>([])
+
+  const handleMarkRead = async () => {
+    await markNotificationsRead()
+    setNotifications((prev) => prev.map((item) => ({ ...item, read: true })))
+    toast({ title: 'Notifications marked read' })
+  }
+
+  const handleRequestResponse = async (notification: Notification, status: 'accepted' | 'rejected') => {
+    if (!notification.requestId) {
+      toast({ title: 'Invalid request', description: 'Unable to process this notification.', variant: 'destructive' })
+      return
+    }
+
+    setProcessingRequestIds((prev) => [...prev, notification.requestId!])
+
+    try {
+      if (notification.type === 'team_request') {
+        await respondToTeamJoinRequest(notification.requestId, status)
+      } else {
+        await respondToMatchRequest(notification.requestId, status)
+      }
+
+      setNotifications((prev) =>
+        prev.map((item) =>
+          item.id === notification.id
+            ? {
+                ...item,
+                read: true,
+                requestStatus: status,
+                message: `تم ${status === 'accepted' ? 'قبول' : 'رفض'} الطلب.`,
+              }
+            : item
+        )
+      )
+      toast({ title: `Request ${status === 'accepted' ? 'accepted' : 'rejected'}`, description: 'Response sent successfully.' })
+    } catch (error) {
+      toast({ title: 'Failed to respond', description: 'Try again later.', variant: 'destructive' })
+    } finally {
+      setProcessingRequestIds((prev) => prev.filter((id) => id !== notification.requestId))
+    }
+  }
+
+  const handleDeleteRequest = async (notification: Notification) => {
+    if (!notification.requestId) {
+      toast({ title: 'Invalid request', description: 'Unable to delete this request.', variant: 'destructive' })
+      return
+    }
+
+    setProcessingRequestIds((prev) => [...prev, notification.requestId!])
+
+    try {
+      await deleteTeamJoinRequest(notification.requestId)
+      setNotifications((prev) => prev.filter((item) => item.id !== notification.id))
+      toast({ title: 'Request deleted', description: 'The join request has been removed.' })
+    } catch (error) {
+      toast({ title: 'Failed to delete', description: 'Try again later.', variant: 'destructive' })
+    } finally {
+      setProcessingRequestIds((prev) => prev.filter((id) => id !== notification.requestId))
+    }
+  }
+
+  const handleCancelBooking = async (notification: Notification) => {
+    if (!notification.requestId) {
+      toast({ title: 'Invalid request', description: 'Unable to cancel booking.', variant: 'destructive' })
+      return
+    }
+
+    setProcessingRequestIds((prev) => [...prev, notification.requestId!])
+
+    try {
+      await cancelMatchRequest(notification.requestId)
+      setNotifications((prev) => prev.map((item) => item.id === notification.id ? { ...item, read: true } : item))
+      toast({ title: 'Booking cancelled', description: 'The match request has been cancelled.' })
+    } catch (error) {
+      toast({ title: 'Failed to cancel', description: 'Try again later.', variant: 'destructive' })
+    } finally {
+      setProcessingRequestIds((prev) => prev.filter((id) => id !== notification.requestId))
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-[#121212] pb-20">
+      <div className="sticky top-0 z-10 bg-[#121212]/95 backdrop-blur-sm border-b border-[#2C2C2C]">
+        <div className="px-4 py-4 flex items-center gap-3">
+          <button onClick={() => router.back()} className="p-2 hover:bg-[#1E1E1E] rounded-lg transition-all">
+            <ArrowLeft className="w-5 h-5 text-white" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-white">Notifications</h1>
+            <p className="text-sm text-[#A0A0A0]">All notifications for your account.</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 py-6 space-y-4">
+        <button
+          onClick={handleMarkRead}
+          className="rounded-2xl border border-[#2C2C2C] bg-[#1E1E1E] px-4 py-3 text-sm text-white hover:border-[#FF3B3F]"
+        >
+          Mark all as read
+        </button>
+
+        {loading ? (
+          <div className="text-white">Loading notifications...</div>
+        ) : notifications.length === 0 ? (
+          <div className="rounded-3xl border border-[#2C2C2C] bg-[#1E1E1E] p-6 text-center text-[#A0A0A0]">
+            No notifications yet.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {notifications.map((notification) => (
+              <div
+                key={notification.id}
+                className={`rounded-3xl border p-4 ${notification.read ? 'border-[#2C2C2C] bg-[#121212]' : 'border-[#FF3B3F] bg-[#1E1E1E]'}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-white font-semibold">{notification.title}</h2>
+                    <p className="mt-1 text-sm text-[#A0A0A0]">{notification.message}</p>
+                  </div>
+                  <span className={`text-xs ${notification.read ? 'text-[#6B7280]' : 'text-[#FF3B3F]'}`}>
+                    {notification.read ? 'Read' : 'New'}
+                  </span>
+                </div>
+                {notification.requestId && notification.type === 'team_request' && notification.requestStatus === 'pending' && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                      onClick={() => handleRequestResponse(notification, 'accepted')}
+                      disabled={processingRequestIds.includes(notification.requestId)}
+                      className="bg-[#22c55e] hover:bg-[#16a34a] text-white"
+                    >
+                      قبول
+                    </Button>
+                    <Button
+                      onClick={() => handleRequestResponse(notification, 'rejected')}
+                      disabled={processingRequestIds.includes(notification.requestId)}
+                      className="bg-[#ef4444] hover:bg-[#dc2626] text-white"
+                    >
+                      رفض
+                    </Button>
+                    <Button
+                      onClick={() => handleDeleteRequest(notification)}
+                      disabled={processingRequestIds.includes(notification.requestId)}
+                      className="bg-[#6b7280] hover:bg-[#4b5563] text-white"
+                    >
+                      حذف الطلب
+                    </Button>
+                  </div>
+                )}
+                {notification.requestId && notification.type === 'team_request' && notification.requestStatus !== 'pending' && (
+                  <div className="mt-4 p-3 bg-[#2C2C2C] rounded-lg text-sm text-[#A0A0A0]">
+                    تم {notification.requestStatus === 'accepted' ? 'قبول' : 'رفض'} هذا الطلب بالفعل ولا يمكن تغيير الرد
+                  </div>
+                )}
+                {notification.requestId && notification.type === 'match_invite' && notification.requestStatus === 'pending' && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                      onClick={() => handleRequestResponse(notification, 'accepted')}
+                      disabled={processingRequestIds.includes(notification.requestId)}
+                      className="bg-[#22c55e] hover:bg-[#16a34a] text-white"
+                    >
+                      قبول العرض
+                    </Button>
+                    <Button
+                      onClick={() => handleRequestResponse(notification, 'rejected')}
+                      disabled={processingRequestIds.includes(notification.requestId)}
+                      className="bg-[#ef4444] hover:bg-[#dc2626] text-white"
+                    >
+                      رفض العرض
+                    </Button>
+                  </div>
+                )}
+                {notification.requestId && notification.type === 'match_invite' && notification.requestStatus !== 'pending' && (
+                  <div className="mt-4 p-3 bg-[#2C2C2C] rounded-lg text-sm text-[#A0A0A0]">
+                    تم {notification.requestStatus === 'accepted' ? 'قبول' : 'رفض'} هذا العرض بالفعل ولا يمكن تغيير الرد
+                  </div>
+                )}
+                {notification.requestId && notification.type === 'match_invite_accepted' && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                      onClick={() => handleCancelBooking(notification)}
+                      disabled={processingRequestIds.includes(notification.requestId)}
+                      className="min-w-[140px] py-3 px-5 text-sm rounded-2xl bg-[#ef4444] hover:bg-[#dc2626] text-white shadow-lg shadow-[#ef4444]/20 transition-all"
+                    >
+                      إلغاء الحجز
+                    </Button>
+                    <Button
+                      onClick={() => router.push(`/matches/create?requestId=${notification.requestId}`)}
+                      className="bg-[#22c55e] hover:bg-[#16a34a] text-white"
+                    >
+                      حجز الملعب
+                    </Button>
+                  </div>
+                )}
+                <div className="mt-3 text-xs text-[#6B7280]">{new Date(notification.createdAt).toLocaleString()}</div>
+              </div>
+            ))}
+            <div ref={loaderRef} className="h-12 flex items-center justify-center">
+              {loadingMore ? (
+                <div className="text-sm text-[#A0A0A0]">Loading more...</div>
+              ) : hasMore ? (
+                <div className="text-sm text-[#6B7280]">Scroll to load more notifications</div>
+              ) : (
+                <div className="text-sm text-[#6B7280]">No more notifications</div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

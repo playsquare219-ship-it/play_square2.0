@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // دالة للتحقق من المصادقة
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // دالة للتحقق من أن المستخدم هو صاحب البيانات
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // دالة للتحقق من أن المستخدم مدير (اختياري)
+    function isAdmin() {
+      return request.auth.token.admin == true;
+    }
+    
+    // ============================================
+    // قواعد مجموعة users
+    // ============================================
+    match /users/{userId} {
+      // قراءة: المستخدم يمكنه قراءة بياناته فقط
+      allow read: if isAuthenticated() && isOwner(userId);
+      
+      // كتابة/تحديث: المستخدم يمكنه تعديل بياناته فقط
+      allow write: if isAuthenticated() && isOwner(userId);
+      
+      // إنشاء: أي مستخدم مصادق يمكنه إنشاء ملفه الشخصي
+      allow create: if isAuthenticated() && request.resource.data.id == userId;
+    }
+    
+    // ============================================
+    // قواعد مجموعات أخرى (مثال)
+    // ============================================
+    
+    // مثال: منشورات اللعبة
+    match /posts/{postId} {
+      allow read: if true;  //任何人都可以 قراءة المنشورات
+      allow write: if isAuthenticated();  // فقط المسجلين يمكنهم الكتابة
+    }
+    
+    // مثال: غرف اللعب
+    match /rooms/{roomId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+    
+    // مثال: إشعارات المستخدم
+    match /notifications/{userId}/{notificationId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+    }
+  }
+}

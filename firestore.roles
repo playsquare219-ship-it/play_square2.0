@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // التحقق من المصادقة
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // التحقق من أن المستخدم يصل إلى بياناته فقط
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    // مجموعة المستخدمين
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || request.auth.token.isAdmin == true);
+      allow write: if isAuthenticated() && isOwner(userId);
+      allow create: if isAuthenticated();
+    }
+    
+    // مجموعة أخرى (مثل posts, games, etc.)
+    match /posts/{postId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+  }
+}
