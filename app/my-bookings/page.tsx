@@ -147,15 +147,50 @@ export default function MyBookingsPage() {
   useEffect(() => {
     async function loadBookings() {
       try {
-        // For now, fetch from localStorage (future: fetch from API with auth)
+        // Try to fetch from Firebase API first
+        const res = await fetch('/api/bookings/all');
+        if (res.ok) {
+          const data = await res.json();
+          const apiBookings = data.bookings || [];
+          
+          // Also get local bookings from localStorage
+          let localBookings: Booking[] = [];
+          if (typeof window !== 'undefined') {
+            const stored = localStorage.getItem('ps_bookings');
+            if (stored) {
+              localBookings = JSON.parse(stored);
+            }
+          }
+          
+          // Merge both sources, removing duplicates
+          const allBookings = [...apiBookings];
+          for (const localBooking of localBookings) {
+            if (!allBookings.some(b => b.date === localBooking.date && b.time === localBooking.time && b.stadiumName === localBooking.stadiumName)) {
+              allBookings.push(localBooking);
+            }
+          }
+          
+          // Sort by date (newest first)
+          allBookings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setBookings(allBookings);
+        } else {
+          // Fallback to localStorage if API fails
+          if (typeof window !== 'undefined') {
+            const stored = localStorage.getItem('ps_bookings');
+            if (stored) {
+              setBookings(JSON.parse(stored));
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[v0] Error loading bookings:', error);
+        // Fallback to localStorage
         if (typeof window !== 'undefined') {
           const stored = localStorage.getItem('ps_bookings');
           if (stored) {
             setBookings(JSON.parse(stored));
           }
         }
-      } catch (error) {
-        console.error('[v0] Error loading bookings:', error);
       } finally {
         setLoading(false);
       }

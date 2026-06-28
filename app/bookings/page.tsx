@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface Stadium {
   id: number;
@@ -527,6 +527,7 @@ function BookingPage({ stadium, onBack }: any) {
 //  MAIN PAGE
 // ═══════════════════════════════════════════════════════════════
 export default function BookingsPage() {
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Stadium | null>(null);
   const [showFilter, setShowFilter] = useState(false);
@@ -535,6 +536,30 @@ export default function BookingsPage() {
   const [stadiums, setStadiums] = useState<Stadium[]>([]);
   const [wilayas, setWilayas] = useState<Wilaya[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Initialize with URL parameters if coming from matches/create
+  useEffect(() => {
+    const stadiumName = searchParams.get('stadium');
+    const wilayaFromUrl = searchParams.get('wilaya');
+    const communeFromUrl = searchParams.get('commune');
+    const dateFromUrl = searchParams.get('date');
+    const timeFromUrl = searchParams.get('time');
+
+    if (stadiumName) {
+      // Auto-select stadium if passed via URL
+      const stadium: Stadium = {
+        id: Math.random(),
+        name: stadiumName,
+        wilayaId: parseInt(wilayaFromUrl || '0') || 0,
+        wilaya: wilayaFromUrl || '',
+        commune: communeFromUrl || '',
+        image: 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=400&q=80',
+        type: 'Football',
+        capacity: 22,
+      };
+      setSelected(stadium);
+    }
+  }, [searchParams]);
 
   // Load wilayas on mount
   useEffect(() => {

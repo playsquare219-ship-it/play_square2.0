@@ -937,12 +937,30 @@ export default function CreateMatchPage() {
               Send Match Invitation
             </Button>
           ) : (
-            <Button
-              onClick={finalizeMatch}
-              className="w-full bg-[#FF3B3F] hover:bg-[#FF3B3F]/90 text-white font-bold py-6 mt-8 shadow-lg shadow-[#FF3B3F]/20"
-            >
-              Confirm Match
-            </Button>
+            <div className="flex gap-3 mt-8">
+              <Button
+                onClick={() => {
+                  // Redirect to bookings page with pre-filled data
+                  const params = new URLSearchParams({
+                    stadium: matchDetails.stadium || '',
+                    wilaya: matchDetails.wilaya || '',
+                    commune: matchDetails.baladia || '',
+                    date: matchDetails.date || '',
+                    time: matchDetails.time || '',
+                  });
+                  router.push(`/bookings?${params.toString()}`);
+                }}
+                className="flex-1 bg-[#FF3B3F] hover:bg-[#FF3B3F]/90 text-white font-bold py-6 shadow-lg shadow-[#FF3B3F]/20"
+              >
+                Book Now
+              </Button>
+              <Button
+                onClick={finalizeMatch}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-6 shadow-lg"
+              >
+                Confirm Match
+              </Button>
+            </div>
           )}
         </div>
       </div>
