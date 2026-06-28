@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface Stadium {
   id: number;
@@ -237,15 +238,17 @@ function EnglishDatePicker({ value, onChange }: any) {
           const cellDate = new Date(view.year, view.month, day);
           cellDate.setHours(0,0,0,0);
           const isPast = cellDate < today;
-          const isSelected = value && cellDate.toISOString().split("T")[0] === value;
+          // Format the cell date as YYYY-MM-DD for proper comparison
+          const y = view.year, m = String(view.month+1).padStart(2,"0"), dd = String(day).padStart(2,"0");
+          const formattedCellDate = `${y}-${m}-${dd}`;
+          const isSelected = value === formattedCellDate;
           const isToday = cellDate.getTime() === today.getTime();
           return (
             <button
               key={day}
               disabled={isPast}
               onClick={() => {
-                const y = view.year, m = String(view.month+1).padStart(2,"0"), dd = String(day).padStart(2,"0");
-                onChange(`${y}-${m}-${dd}`);
+                onChange(formattedCellDate);
               }}
               style={{
                 background: isSelected ? R : isToday ? "#2a0a0a" : "none",
@@ -338,6 +341,7 @@ function FilterPanel({ wilayaId, communeVal, onWilayaChange, onCommuneChange, on
 
 // ─── Booking Page ─────────────────────────────────────────────────────────────
 function BookingPage({ stadium, onBack }: any) {
+  const router = useRouter();
   const [date, setDate] = useState(() => {
     const d = new Date();
     return d.toISOString().split('T')[0];
@@ -395,8 +399,31 @@ function BookingPage({ stadium, onBack }: any) {
         }),
       });
       if (res.ok) {
+        const booking = await res.json();
         setStatus("success");
         setTick((n) => n + 1);
+        
+        // Save booking to localStorage
+        if (typeof window !== 'undefined') {
+          const stored = localStorage.getItem('ps_bookings') || '[]';
+          const bookings = JSON.parse(stored);
+          bookings.push({
+            id: booking.id,
+            stadiumName: stadium.name,
+            date,
+            time,
+            wilaya: stadium.wilaya,
+            commune: stadium.commune,
+            createdAt: new Date().toISOString(),
+            status: 'confirmed',
+          });
+          localStorage.setItem('ps_bookings', JSON.stringify(bookings));
+        }
+        
+        // Redirect to my-bookings after 2 seconds
+        setTimeout(() => {
+          router.push('/my-bookings');
+        }, 2000);
       } else {
         setStatus("error");
       }
