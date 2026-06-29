@@ -449,22 +449,9 @@ export default function CreateMatchPage() {
                     </div>
 
                     <Button 
-                      className="w-full h-14 rounded-xl bg-[#2C2C2C] hover:bg-[#3C3C3C] hover:border-white/30 border border-white/10 text-white font-semibold transition-all hover:scale-[1.02] shadow-[0_4px_10px_rgba(0,0,0,0.2)]"
+                      className="w-full h-14 rounded-xl bg-[#FF3B3F] hover:bg-[#FF3B3F]/90 border border-white/10 text-white font-semibold transition-all hover:scale-[1.02] shadow-[0_4px_10px_rgba(255,59,63,0.3)]"
                       onClick={() => {
-                        setSelectedUserTeam({
-                          id: `booking_${Date.now()}`,
-                          name: "Book without team",
-                          captainId: user?.id || "",
-                          players: [],
-                          createdAt: new Date().toISOString(),
-                          updatedAt: new Date().toISOString(),
-                          rating: 0,
-                          division: "",
-                          wins: 0,
-                          draws: 0,
-                          losses: 0,
-                        })
-                        setMatchState("details")
+                        router.push('/bookings')
                     }}>
                       Book Stadium Without a Team
                     </Button>
