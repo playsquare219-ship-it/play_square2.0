@@ -357,46 +357,21 @@ export default function CreateMatchPage() {
       return
     }
 
+    // Redirect to bookings page for solo stadium booking
     try {
-      const now = new Date().toISOString()
-      const fallbackOpponent = opponent || {
-        id: `booking_opponent_${Date.now()}`,
-        name: "No opponent",
-        captainId: "",
-        players: [],
-        createdAt: now,
-        updatedAt: now,
-        rating: 0,
-        division: "",
-        wins: 0,
-        draws: 0,
-        losses: 0,
-      }
-      // Create and save match using Firebase
-      await saveMatch({
-        team1Id: selectedUserTeam.id,
-        team2Id: fallbackOpponent.id,
-        team1: selectedUserTeam,
-        team2: fallbackOpponent,
-        stadium: matchDetails.stadium,
-        wilaya: matchDetails.wilaya,
-        baladia: matchDetails.baladia,
-        dateTime: matchDetails.date + (matchDetails.time ? ` ${matchDetails.time}` : ""),
-        createdByUserId: user?.id || "",
-      })
-
-      toast({
-        title: "Match Scheduled!",
-        description: "Match saved successfully",
-      })
-
-      // Animate out or redirect
-      setTimeout(() => router.push("/home"), 1000)
+      const params = new URLSearchParams({
+        stadium: matchDetails.stadium || '',
+        wilaya: matchDetails.wilaya || '',
+        commune: matchDetails.baladia || '',
+        date: matchDetails.date || '',
+        time: matchDetails.time || '',
+      });
+      router.push(`/bookings?${params.toString()}`);
     } catch (error) {
-      console.error("Error creating match:", error)
+      console.error("Error redirecting to bookings:", error)
       toast({
         title: "Error",
-        description: "Failed to create match. Try again.",
+        description: "Failed to navigate to bookings.",
         variant: "destructive"
       })
     }

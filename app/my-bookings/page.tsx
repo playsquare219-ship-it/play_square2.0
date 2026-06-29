@@ -148,48 +148,71 @@ export default function MyBookingsPage() {
     async function loadBookings() {
       try {
         // Try to fetch from Firebase API first
-        const res = await fetch('/api/bookings/all');
-        if (res.ok) {
-          const data = await res.json();
-          const apiBookings = data.bookings || [];
-          
-          // Also get local bookings from localStorage
-          let localBookings: Booking[] = [];
-          if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem('ps_bookings');
-            if (stored) {
-              localBookings = JSON.parse(stored);
+        const soloRes = await fetch('/api/bookings/all');
+        const teamRes = await fetch('/api/booking-matches');
+        
+        let allBookings: Booking[] = [];
+        
+        // Get solo bookings from Firebase
+        if (soloRes.ok) {
+          const data = await soloRes.json();
+          allBookings.push(...(data.bookings || []));
+        }
+        
+        // Get team bookings from Firebase
+        if (teamRes.ok) {
+          const data = await teamRes.json();
+          const teamBookings = (data.bookings || []).map((b: any) => ({
+            ...b,
+            isTeamBooking: true,
+          }));
+          allBookings.push(...teamBookings);
+        }
+
+        // Also get local bookings from localStorage (solo and team)
+        if (typeof window !== 'undefined') {
+          const soloStored = localStorage.getItem('ps_bookings');
+          if (soloStored) {
+            const soloBookings = JSON.parse(soloStored);
+            for (const booking of soloBookings) {
+              if (!allBookings.some(b => b.date === booking.date && b.time === booking.time && b.stadiumName === booking.stadiumName)) {
+                allBookings.push(booking);
+              }
             }
           }
           
-          // Merge both sources, removing duplicates
-          const allBookings = [...apiBookings];
-          for (const localBooking of localBookings) {
-            if (!allBookings.some(b => b.date === localBooking.date && b.time === localBooking.time && b.stadiumName === localBooking.stadiumName)) {
-              allBookings.push(localBooking);
-            }
-          }
-          
-          // Sort by date (newest first)
-          allBookings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-          setBookings(allBookings);
-        } else {
-          // Fallback to localStorage if API fails
-          if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem('ps_bookings');
-            if (stored) {
-              setBookings(JSON.parse(stored));
+          const teamStored = localStorage.getItem('ps_team_bookings');
+          if (teamStored) {
+            const teamBookings = JSON.parse(teamStored);
+            for (const booking of teamBookings) {
+              if (!allBookings.some(b => b.requestId === booking.requestId && b.date === booking.date)) {
+                allBookings.push({...booking, isTeamBooking: true});
+              }
             }
           }
         }
+        
+        // Sort by date (newest first)
+        allBookings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setBookings(allBookings);
       } catch (error) {
         console.error('[v0] Error loading bookings:', error);
         // Fallback to localStorage
         if (typeof window !== 'undefined') {
-          const stored = localStorage.getItem('ps_bookings');
-          if (stored) {
-            setBookings(JSON.parse(stored));
+          const soloStored = localStorage.getItem('ps_bookings');
+          const teamStored = localStorage.getItem('ps_team_bookings');
+          let allBookings: Booking[] = [];
+          
+          if (soloStored) {
+            allBookings.push(...JSON.parse(soloStored));
           }
+          if (teamStored) {
+            const teamBookings = JSON.parse(teamStored);
+            allBookings.push(...teamBookings.map((b: any) => ({...b, isTeamBooking: true})));
+          }
+          
+          allBookings.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setBookings(allBookings);
         }
       } finally {
         setLoading(false);

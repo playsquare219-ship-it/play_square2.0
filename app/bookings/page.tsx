@@ -386,46 +386,102 @@ function BookingPage({ stadium, onBack }: any) {
     if (!time) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stadiumId: stadium.id,
-          stadiumName: stadium.name,
-          date,
-          time,
-          wilaya: stadium.wilaya,
-          commune: stadium.commune,
-        }),
-      });
-      if (res.ok) {
-        const booking = await res.json();
-        setStatus("success");
-        setTick((n) => n + 1);
-        
-        // Save booking to localStorage
-        if (typeof window !== 'undefined') {
-          const stored = localStorage.getItem('ps_bookings') || '[]';
-          const bookings = JSON.parse(stored);
-          bookings.push({
-            id: booking.id,
+      const isTeamBooking = stadium.isTeamBooking === true;
+      const requestId = stadium.requestId;
+
+      if (isTeamBooking && requestId) {
+        // Team booking flow - save to booking_matches collection
+        const res = await fetch('/api/booking-matches', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requestId,
+            matchRequestId: requestId,
             stadiumName: stadium.name,
             date,
             time,
             wilaya: stadium.wilaya,
             commune: stadium.commune,
-            createdAt: new Date().toISOString(),
-            status: 'confirmed',
-          });
-          localStorage.setItem('ps_bookings', JSON.stringify(bookings));
+            matchDetails: {
+              teamId: stadium.teamId || null,
+              bookedAt: new Date().toISOString(),
+            },
+          }),
+        });
+
+        if (res.ok) {
+          setStatus("success");
+          setTick((n) => n + 1);
+          
+          // Save to localStorage as backup
+          if (typeof window !== 'undefined') {
+            const stored = localStorage.getItem('ps_team_bookings') || '[]';
+            const bookings = JSON.parse(stored);
+            bookings.push({
+              requestId,
+              stadiumName: stadium.name,
+              date,
+              time,
+              wilaya: stadium.wilaya,
+              commune: stadium.commune,
+              createdAt: new Date().toISOString(),
+              status: 'confirmed',
+              isTeamBooking: true,
+            });
+            localStorage.setItem('ps_team_bookings', JSON.stringify(bookings));
+          }
+
+          // Redirect to my-bookings after 2 seconds
+          setTimeout(() => {
+            router.push('/my-bookings');
+          }, 2000);
+        } else {
+          setStatus("error");
         }
-        
-        // Redirect to my-bookings after 2 seconds
-        setTimeout(() => {
-          router.push('/my-bookings');
-        }, 2000);
       } else {
-        setStatus("error");
+        // Solo booking flow - save to bookings collection
+        const res = await fetch('/api/bookings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stadiumId: stadium.id,
+            stadiumName: stadium.name,
+            date,
+            time,
+            wilaya: stadium.wilaya,
+            commune: stadium.commune,
+          }),
+        });
+
+        if (res.ok) {
+          const booking = await res.json();
+          setStatus("success");
+          setTick((n) => n + 1);
+          
+          // Save booking to localStorage
+          if (typeof window !== 'undefined') {
+            const stored = localStorage.getItem('ps_bookings') || '[]';
+            const bookings = JSON.parse(stored);
+            bookings.push({
+              id: booking.id,
+              stadiumName: stadium.name,
+              date,
+              time,
+              wilaya: stadium.wilaya,
+              commune: stadium.commune,
+              createdAt: new Date().toISOString(),
+              status: 'confirmed',
+            });
+            localStorage.setItem('ps_bookings', JSON.stringify(bookings));
+          }
+          
+          // Redirect to my-bookings after 2 seconds
+          setTimeout(() => {
+            router.push('/my-bookings');
+          }, 2000);
+        } else {
+          setStatus("error");
+        }
       }
     } catch (error) {
       console.error('[v0] Booking error:', error);
@@ -537,13 +593,15 @@ export default function BookingsPage() {
   const [wilayas, setWilayas] = useState<Wilaya[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Initialize with URL parameters if coming from matches/create
+  // Initialize with URL parameters if coming from matches/create or notifications
   useEffect(() => {
     const stadiumName = searchParams.get('stadium');
     const wilayaFromUrl = searchParams.get('wilaya');
     const communeFromUrl = searchParams.get('commune');
     const dateFromUrl = searchParams.get('date');
     const timeFromUrl = searchParams.get('time');
+    const isTeamBooking = searchParams.get('isTeamBooking') === 'true';
+    const requestId = searchParams.get('requestId');
 
     if (stadiumName) {
       // Auto-select stadium if passed via URL
@@ -556,6 +614,8 @@ export default function BookingsPage() {
         image: 'https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=400&q=80',
         type: 'Football',
         capacity: 22,
+        isTeamBooking: isTeamBooking,
+        requestId: requestId || undefined,
       };
       setSelected(stadium);
     }

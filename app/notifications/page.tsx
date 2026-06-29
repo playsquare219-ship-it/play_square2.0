@@ -255,10 +255,17 @@ export default function NotificationsPage() {
                       إلغاء الحجز
                     </Button>
                     <Button
-                      onClick={() => router.push(`/matches/create?requestId=${notification.requestId}`)}
+                      onClick={() => {
+                        // Redirect to bookings page with match details
+                        const bookingParams = new URLSearchParams({
+                          requestId: notification.requestId,
+                          isTeamBooking: 'true',
+                        });
+                        router.push(`/bookings?${bookingParams.toString()}`);
+                      }}
                       className="bg-[#22c55e] hover:bg-[#16a34a] text-white"
                     >
-                      حجز الملعب
+                      تأكيد الحجز
                     </Button>
                   </div>
                 )}
