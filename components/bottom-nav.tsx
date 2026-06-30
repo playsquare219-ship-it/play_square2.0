@@ -1,10 +1,10 @@
 "use client"
 
-import { Home, Store, Trophy, Settings } from "lucide-react"
+import { Home, Store, Trophy, Settings, Calendar } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 interface BottomNavProps {
-  active: "home" | "store" | "tournaments" | "settings"
+  active: "home" | "store" | "tournaments" | "settings" | "bookings"
 }
 
 export default function BottomNav({ active }: BottomNavProps) {
@@ -12,7 +12,7 @@ export default function BottomNav({ active }: BottomNavProps) {
 
   const navItems = [
     { id: "home", label: "Home", icon: Home, path: "/home" },
-    { id: "store", label: "Store", icon: Store, path: "/store" },
+    { id: "bookings", label: "Bookings", icon: Calendar, path: "/bookings" },
     { id: "tournaments", label: "Tournaments", icon: Trophy, path: "/tournaments" },
     { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
   ]

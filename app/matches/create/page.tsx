@@ -33,7 +33,7 @@ const COMMUNES: Record<string, string[]> = {
 }
 
 type SearchMode = "instant" | "random" | "search" | null
-type MatchState = "selecting" | "searching" | "found" | "details" | "confirmed"
+type MatchState = "selecting" | "searching" | "found" | "confirmed"
 
 export default function CreateMatchPage() {
   const router = useRouter()
@@ -128,7 +128,7 @@ export default function CreateMatchPage() {
           time: timeValue.slice(0, 5) || '',
         })
         if (data.status === 'accepted') {
-          setMatchState('details')
+          setMatchState('found')
         }
       }
     }
@@ -256,7 +256,7 @@ export default function CreateMatchPage() {
       await sendMatchInvitation()
       return
     }
-    setMatchState("details")
+    setMatchState("found")
   }
 
   const sendMatchInvitation = async () => {
@@ -357,46 +357,21 @@ export default function CreateMatchPage() {
       return
     }
 
+    // Redirect to bookings page for solo stadium booking
     try {
-      const now = new Date().toISOString()
-      const fallbackOpponent = opponent || {
-        id: `booking_opponent_${Date.now()}`,
-        name: "No opponent",
-        captainId: "",
-        players: [],
-        createdAt: now,
-        updatedAt: now,
-        rating: 0,
-        division: "",
-        wins: 0,
-        draws: 0,
-        losses: 0,
-      }
-      // Create and save match using Firebase
-      await saveMatch({
-        team1Id: selectedUserTeam.id,
-        team2Id: fallbackOpponent.id,
-        team1: selectedUserTeam,
-        team2: fallbackOpponent,
-        stadium: matchDetails.stadium,
-        wilaya: matchDetails.wilaya,
-        baladia: matchDetails.baladia,
-        dateTime: matchDetails.date + (matchDetails.time ? ` ${matchDetails.time}` : ""),
-        createdByUserId: user?.id || "",
-      })
-
-      toast({
-        title: "Match Scheduled!",
-        description: "Match saved successfully",
-      })
-
-      // Animate out or redirect
-      setTimeout(() => router.push("/home"), 1000)
+      const params = new URLSearchParams({
+        stadium: matchDetails.stadium || '',
+        wilaya: matchDetails.wilaya || '',
+        commune: matchDetails.baladia || '',
+        date: matchDetails.date || '',
+        time: matchDetails.time || '',
+      });
+      router.push(`/bookings?${params.toString()}`);
     } catch (error) {
-      console.error("Error creating match:", error)
+      console.error("Error redirecting to bookings:", error)
       toast({
         title: "Error",
-        description: "Failed to create match. Try again.",
+        description: "Failed to navigate to bookings.",
         variant: "destructive"
       })
     }
@@ -474,22 +449,9 @@ export default function CreateMatchPage() {
                     </div>
 
                     <Button 
-                      className="w-full h-14 rounded-xl bg-[#2C2C2C] hover:bg-[#3C3C3C] hover:border-white/30 border border-white/10 text-white font-semibold transition-all hover:scale-[1.02] shadow-[0_4px_10px_rgba(0,0,0,0.2)]"
+                      className="w-full h-14 rounded-xl bg-[#FF3B3F] hover:bg-[#FF3B3F]/90 border border-white/10 text-white font-semibold transition-all hover:scale-[1.02] shadow-[0_4px_10px_rgba(255,59,63,0.3)]"
                       onClick={() => {
-                        setSelectedUserTeam({
-                          id: `booking_${Date.now()}`,
-                          name: "Book without team",
-                          captainId: user?.id || "",
-                          players: [],
-                          createdAt: new Date().toISOString(),
-                          updatedAt: new Date().toISOString(),
-                          rating: 0,
-                          division: "",
-                          wins: 0,
-                          draws: 0,
-                          losses: 0,
-                        })
-                        setMatchState("details")
+                        router.push('/bookings')
                     }}>
                       Book Stadium Without a Team
                     </Button>
@@ -734,220 +696,7 @@ export default function CreateMatchPage() {
     )
   }
 
-  // 4. MATCH DETAILS FORM
-  if (matchState === "details") {
-    return (
-      <div className="min-h-screen bg-[#121212] text-white p-4 animate-fade-in pb-20">
-        <header className="flex items-center gap-4 mb-6 pt-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setMatchState(opponent ? "found" : "selecting")}
-            className="text-white"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </Button>
-          <h1 className="text-xl font-bold">Match Details</h1>
-        </header>
 
-        <div className="space-y-6 max-w-md mx-auto">
-          <div className="bg-[#1E1E1E] border border-[#2C2C2C] rounded-xl p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#2C2C2C] flex items-center justify-center text-xs font-bold">
-                {opponent?.name ? opponent.name.substring(0, 2) : "NA"}
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Opponent</p>
-                <p className="font-bold">{opponent?.name || "No opponent"}</p>
-                {!opponent && <p className="text-xs text-gray-500">Book a stadium and time without an opposing team</p>}
-              </div>
-            </div>
-            <div className="text-[#FF3B3F] font-bold text-sm">{opponent ? "Change" : "Confirm"}</div>
-          </div>
-
-          <div className="space-y-4">
-            {/* Location */}
-            <div className="space-y-2">
-              <Label className="text-gray-300">Wilaya</Label>
-              <Select
-                value={matchDetails.wilaya}
-                onValueChange={(val) => {
-                  setMatchDetails({ ...matchDetails, wilaya: val, baladia: '', stadium: '' })
-                  setIsTimeConfirmed(false)
-                }}
-              >
-                <SelectTrigger className="bg-[#1E1E1E] border-[#2C2C2C] text-white py-6">
-                  <SelectValue placeholder="Select Wilaya" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#1E1E1E] border-[#2C2C2C]">
-                  {wilayas.map((w) => (
-                    <SelectItem key={w} value={w} className="text-right">{w}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-gray-300">Baladia</Label>
-              <Select
-                value={matchDetails.baladia}
-                disabled={!matchDetails.wilaya}
-                onValueChange={(val) => {
-                  setMatchDetails({ ...matchDetails, baladia: val, stadium: '' })
-                  setIsTimeConfirmed(false)
-                }}
-              >
-                <SelectTrigger className="bg-[#1E1E1E] border-[#2C2C2C] text-white py-6">
-                  <SelectValue placeholder="Select Baladia" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#1E1E1E] border-[#2C2C2C]">
-                  {baladias.map((baladia) => (
-                    <SelectItem key={baladia.id} value={baladia.name} className="text-right">
-                      {baladia.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Date & Time */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-gray-300">Date</Label>
-                <Input
-                  type="date"
-                  className="bg-[#1E1E1E] border-[#2C2C2C] py-6"
-                  value={matchDetails.date}
-                  min={dateRange.min || undefined}
-                  max={dateRange.max || undefined}
-                  onChange={(e) => {
-                    const selectedDate = e.target.value
-                    if (dateRange.min && dateRange.max && !enforceRequestedDateRange(selectedDate)) {
-                      return
-                    }
-                    setMatchDetails({ ...matchDetails, date: selectedDate, stadium: '' })
-                    setIsTimeConfirmed(false)
-                  }}
-                />
-                {matchRequest?.proposedDate ? (
-                  <p className="text-xs text-gray-400">
-                    Booking date must be between {dateRange.min} and {dateRange.max}.
-                  </p>
-                ) : null}
-              </div>
-              <div className="space-y-2">
-                <Label className="text-gray-300">Time (Hour)</Label>
-                <Select
-                  value={matchDetails.time}
-                  onValueChange={(val) => {
-                    setMatchDetails({ ...matchDetails, time: val, stadium: '' })
-                    setIsTimeConfirmed(false)
-                  }}
-                >
-                  <SelectTrigger className="bg-[#1E1E1E] border-[#2C2C2C] text-white py-6">
-                    <SelectValue placeholder="Select Hour" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#1E1E1E] border-[#2C2C2C]">
-                    {Array.from({ length: 24 }, (_, i) => {
-                      const hour = String(i).padStart(2, '0')
-                      return (
-                        <SelectItem key={hour} value={`${hour}:00`} className="text-right">
-                          {hour}:00
-                        </SelectItem>
-                      )
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <Button
-                onClick={async () => {
-                  if (!selectedBaladiaId || !matchDetails.date || !matchDetails.time) {
-                    toast({
-                      title: 'Please complete location and time',
-                      description: 'Select baladia, date, and time before confirming.',
-                      variant: 'destructive',
-                    })
-                    return
-                  }
-                  setIsTimeConfirmed(true)
-                }}
-                disabled={!selectedBaladiaId || !matchDetails.date || !matchDetails.time}
-                className="w-full bg-[#FF3B3F] hover:bg-[#FF3B3F]/90 text-white font-bold py-6"
-              >
-                تأكيد التوقيت
-              </Button>
-              {isTimeConfirmed ? (
-                <p className="text-sm text-green-400 mt-2 text-right">
-                  تم تأكيد التوقيت: {matchDetails.date} {matchDetails.time}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-gray-300">Stadium Name</Label>
-              <Select
-                value={matchDetails.stadium}
-                onValueChange={(val) => setMatchDetails({ ...matchDetails, stadium: val })}
-                disabled={!matchDetails.baladia || !matchDetails.date || !matchDetails.time || !isTimeConfirmed || stadiums.length === 0}
-              >
-                <SelectTrigger className="bg-[#1E1E1E] border-[#2C2C2C] text-white py-6">
-                  <SelectValue
-                    placeholder={
-                      !matchDetails.date || !matchDetails.time
-                        ? "Select date and time first"
-                        : !isTimeConfirmed
-                        ? "Confirm time to load stadiums"
-                        : stadiums.length > 0
-                        ? "Select Stadium"
-                        : "No stadiums available at selected time"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent className="bg-[#1E1E1E] border-[#2C2C2C]">
-                  {stadiums.map((stadium) => (
-                    <SelectItem key={stadium.id} value={stadium.name} className="text-right">
-                      {stadium.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {matchRequest ? (
-            <Button
-              onClick={finalizeMatch}
-              disabled={matchRequest.status !== 'accepted' || !canConfirmBooking}
-              className="w-full bg-[#FF3B3F] hover:bg-[#FF3B3F]/90 text-white font-bold py-6 mt-8 shadow-lg shadow-[#FF3B3F]/20"
-            >
-              {matchRequest.status !== 'accepted'
-                ? "Waiting for the other team's acceptance"
-                : canConfirmBooking
-                ? 'Confirm Booking'
-                : 'Not authorized to confirm'}
-            </Button>
-          ) : opponent && !opponent.id.startsWith('booking_') ? (
-            <Button
-              onClick={sendMatchInvitation}
-              className="w-full bg-[#FF3B3F] hover:bg-[#FF3B3F]/90 text-white font-bold py-6 mt-8 shadow-lg shadow-[#FF3B3F]/20"
-            >
-              Send Match Invitation
-            </Button>
-          ) : (
-            <Button
-              onClick={finalizeMatch}
-              className="w-full bg-[#FF3B3F] hover:bg-[#FF3B3F]/90 text-white font-bold py-6 mt-8 shadow-lg shadow-[#FF3B3F]/20"
-            >
-              Confirm Match
-            </Button>
-          )}
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-[#121212] flex items-center justify-center">
