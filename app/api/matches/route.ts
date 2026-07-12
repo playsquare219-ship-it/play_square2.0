@@ -1,45 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { createMatch, getAllMatchesFromDb, upsertTeam, getMatchesByTeamId, cancelMatch } from '@/lib/server/db'
-import { verifyToken } from '@/lib/server/auth/jwt'
-import { findUserById } from '@/lib/server/db/users'
+import { createMatch, getAllMatchesFromDb, upsertTeam, cancelMatch } from '@/lib/server/db'
 import type { Team } from '@/types'
 
 export async function GET() {
   try {
-    const cookieStore = await cookies()
-    const token = cookieStore.get('playSquareToken')?.value
-    
-    // إذا لم يكن هناك توكن، جلب جميع المباريات
-    if (!token) {
-      const matches = await getAllMatchesFromDb()
-      return NextResponse.json({ matches })
-    }
-    
-    const decoded = verifyToken(token)
-    
-    // إذا كان التوكن غير صالح، جلب جميع المباريات
-    if (!decoded) {
-      const matches = await getAllMatchesFromDb()
-      return NextResponse.json({ matches })
-    }
-    
-    // الحصول على بيانات المستخدم
-    const user = await findUserById(decoded.userId)
-    
-    // إذا لم يكن للمستخدم فريق، جلب جميع المباريات
-    if (!user || !user.teamId) {
-      const matches = await getAllMatchesFromDb()
-      return NextResponse.json({ matches })
-    }
-    
-    // جلب المباريات الخاصة بفريق المستخدم فقط
-    const matches = await getMatchesByTeamId(user.teamId)
+    // Always return all matches
+    const matches = await getAllMatchesFromDb()
     return NextResponse.json({ matches })
   } catch (error) {
     console.error('Error fetching matches:', error)
-    const matches = await getAllMatchesFromDb()
-    return NextResponse.json({ matches })
+    return NextResponse.json({ error: 'Failed to fetch matches' }, { status: 500 })
   }
 }
 
