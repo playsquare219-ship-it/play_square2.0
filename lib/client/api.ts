@@ -472,6 +472,113 @@ export async function cancelMatchRequest(requestId: string): Promise<void> {
 }
 
 // ============================================
+// Match Invitations API
+// ============================================
+
+export async function createMatchInvitation(input: {
+  toUserId: string
+  fromTeamId?: string
+  toTeamId?: string
+  originalProposedDate: string
+  originalStadium?: string
+  bookingId?: string
+}): Promise<any> {
+  try {
+    const res = await fetch('/api/match-invitations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(input),
+    })
+    if (!res.ok) {
+      const errorText = await res.text()
+      throw new Error(`Failed to create invitation: ${errorText}`)
+    }
+    const data = await res.json()
+    return data.invitation
+  } catch (error) {
+    console.error('Error creating match invitation:', error)
+    throw error
+  }
+}
+
+export async function getPendingMatchInvitations(): Promise<any[]> {
+  try {
+    const res = await fetch('/api/match-invitations?type=pending', {
+      cache: 'no-store',
+      credentials: 'include',
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return data.invitations || []
+  } catch (error) {
+    console.error('Error fetching pending invitations:', error)
+    return []
+  }
+}
+
+export async function respondToMatchInvitation(
+  invitationId: string,
+  action: 'accept' | 'reject' | 'change_court' | 'change_time' | 'cancel',
+  extraData?: any
+): Promise<void> {
+  try {
+    const res = await fetch('/api/match-invitations', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        invitationId,
+        action,
+        ...extraData,
+      }),
+    })
+    if (!res.ok) {
+      const errorText = await res.text()
+      throw new Error(`Failed to respond to invitation: ${errorText}`)
+    }
+  } catch (error) {
+    console.error('Error responding to match invitation:', error)
+    throw error
+  }
+}
+
+export async function generateBookingPDF(input: {
+  matchId: string
+  stadium: string
+  dateTime: string
+  team1Name?: string
+  team2Name?: string
+  wilaya?: string
+  commune?: string
+  bookingReference?: string
+  organizer?: string
+  invitee?: string
+}): Promise<string> {
+  try {
+    const params = new URLSearchParams()
+    Object.entries(input).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        params.append(key, String(value))
+      }
+    })
+
+    const res = await fetch(`/api/generate-booking-pdf?${params.toString()}`, {
+      method: 'GET',
+      credentials: 'include',
+    })
+    if (!res.ok) {
+      throw new Error('Failed to generate PDF')
+    }
+    const htmlContent = await res.text()
+    return htmlContent
+  } catch (error) {
+    console.error('Error generating booking PDF:', error)
+    throw error
+  }
+}
+
+// ============================================
 // Direct Challenges API
 // ============================================
 

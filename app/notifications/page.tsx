@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
-import { getNotifications, markNotificationsRead, respondToTeamJoinRequest, deleteTeamJoinRequest, respondToMatchRequest, cancelMatchRequest } from '@/lib/client/api'
+import { getNotifications, markNotificationsRead, respondToTeamJoinRequest, deleteTeamJoinRequest, respondToMatchRequest, cancelMatchRequest, respondToMatchInvitation, generateBookingPDF } from '@/lib/client/api'
 import type { Notification } from '@/types'
 
 export default function NotificationsPage() {
@@ -148,6 +148,91 @@ export default function NotificationsPage() {
     }
   }
 
+  const handleMatchInvitationResponse = async (
+    notification: Notification,
+    action: 'accept' | 'reject' | 'change_court' | 'change_time' | 'cancel'
+  ) => {
+    if (!notification.invitationId) {
+      toast({ title: 'Invalid invitation', description: 'Unable to process this invitation.', variant: 'destructive' })
+      return
+    }
+
+    setProcessingRequestIds((prev) => [...prev, notification.invitationId!])
+
+    try {
+      const extraData: any = {}
+      if (action === 'change_court') {
+        extraData.suggestedValue = prompt('أدخل اسم الملعب الجديد:')
+        if (!extraData.suggestedValue) {
+          setProcessingRequestIds((prev) => prev.filter((id) => id !== notification.invitationId))
+          return
+        }
+      } else if (action === 'change_time') {
+        extraData.suggestedValue = prompt('أدخل التوقيت الجديد (مثال: 18:00):')
+        if (!extraData.suggestedValue) {
+          setProcessingRequestIds((prev) => prev.filter((id) => id !== notification.invitationId))
+          return
+        }
+      }
+
+      await respondToMatchInvitation(notification.invitationId, action, extraData)
+      setNotifications((prev) =>
+        prev.map((item) =>
+          item.id === notification.id
+            ? {
+                ...item,
+                read: true,
+                message: `تم ${
+                  action === 'accept'
+                    ? 'قبول'
+                    : action === 'reject'
+                      ? 'رفض'
+                      : action === 'cancel'
+                        ? 'إلغاء'
+                        : 'طلب تغيير'
+                } الدعوة.`,
+              }
+            : item
+        )
+      )
+      toast({ title: 'تم التحديث', description: 'تم معالجة ردك على الدعوة بنجاح.' })
+    } catch (error) {
+      toast({ title: 'فشل التحديث', description: 'يرجى المحاولة لاحقاً.', variant: 'destructive' })
+    } finally {
+      setProcessingRequestIds((prev) => prev.filter((id) => id !== notification.invitationId))
+    }
+  }
+
+  const handleDownloadPDF = async (notification: Notification) => {
+    try {
+      if (!notification.matchDetails) {
+        toast({ title: 'خطأ', description: 'تفاصيل المباراة غير متاحة.', variant: 'destructive' })
+        return
+      }
+
+      const matchDetails = notification.matchDetails
+      const htmlContent = await generateBookingPDF({
+        matchId: notification.matchId || 'unknown',
+        stadium: matchDetails.stadium || '',
+        dateTime: matchDetails.dateTime || new Date().toISOString(),
+        team1Name: matchDetails.team1Name,
+        team2Name: matchDetails.team2Name,
+        wilaya: matchDetails.wilaya,
+        commune: matchDetails.commune,
+        bookingReference: notification.matchId,
+        organizer: matchDetails.fromUser,
+      })
+
+      // Open PDF in new window
+      const blob = new Blob([htmlContent], { type: 'text/html; charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank')
+    } catch (error) {
+      toast({ title: 'فشل تحميل PDF', description: 'حدث خطأ عند محاولة تحميل ملف PDF.', variant: 'destructive' })
+      console.error('Error generating PDF:', error)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#121212] pb-20">
       <div className="sticky top-0 z-10 bg-[#121212]/95 backdrop-blur-sm border-b border-[#2C2C2C]">
@@ -266,6 +351,70 @@ export default function NotificationsPage() {
                       className="bg-[#22c55e] hover:bg-[#16a34a] text-white"
                     >
                       تأكيد الحجز
+                    </Button>
+                  </div>
+                )}
+                {notification.invitationId && notification.type === 'match_invitation' && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                      onClick={() => handleMatchInvitationResponse(notification, 'accept')}
+                      disabled={processingRequestIds.includes(notification.invitationId!)}
+                      className="bg-[#22c55e] hover:bg-[#16a34a] text-white"
+                    >
+                      الموافقة
+                    </Button>
+                    <Button
+                      onClick={() => handleMatchInvitationResponse(notification, 'change_court')}
+                      disabled={processingRequestIds.includes(notification.invitationId!)}
+                      className="bg-[#3b82f6] hover:bg-[#2563eb] text-white"
+                    >
+                      تغيير الملعب
+                    </Button>
+                    <Button
+                      onClick={() => handleMatchInvitationResponse(notification, 'change_time')}
+                      disabled={processingRequestIds.includes(notification.invitationId!)}
+                      className="bg-[#f59e0b] hover:bg-[#d97706] text-white"
+                    >
+                      تغيير التوقيت
+                    </Button>
+                    <Button
+                      onClick={() => handleMatchInvitationResponse(notification, 'reject')}
+                      disabled={processingRequestIds.includes(notification.invitationId!)}
+                      className="bg-[#ef4444] hover:bg-[#dc2626] text-white"
+                    >
+                      الرفض
+                    </Button>
+                  </div>
+                )}
+                {notification.invitationId && notification.type === 'match_confirmed_both' && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                      onClick={() => handleDownloadPDF(notification)}
+                      className="bg-[#8b5cf6] hover:bg-[#7c3aed] text-white"
+                    >
+                      تحميل PDF
+                    </Button>
+                    <Button
+                      onClick={() => handleMatchInvitationResponse(notification, 'cancel')}
+                      disabled={processingRequestIds.includes(notification.invitationId!)}
+                      className="bg-[#ef4444] hover:bg-[#dc2626] text-white"
+                    >
+                      إلغاء المباراة
+                    </Button>
+                  </div>
+                )}
+                {notification.invitationId && 
+                  (notification.type === 'match_invitation_court_change_requested' || 
+                   notification.type === 'match_invitation_time_change_requested') && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                      onClick={() => {
+                        const changeType = notification.type === 'match_invitation_court_change_requested' ? 'court' : 'time';
+                        router.push(`/bookings?invitationId=${notification.invitationId}&changeType=${changeType}`);
+                      }}
+                      className="bg-[#3b82f6] hover:bg-[#2563eb] text-white"
+                    >
+                      إجراء التغيير
                     </Button>
                   </div>
                 )}

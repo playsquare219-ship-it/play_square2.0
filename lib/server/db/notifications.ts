@@ -10,7 +10,7 @@ export async function createNotification(notification: Omit<Notification, 'id' |
   const now = Timestamp.now()
   const notificationId = `notification_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
 
-  const newNotification: Omit<Notification, 'id' | 'createdAt'> & { createdAt: Timestamp } = {
+  const newNotification: any = {
     userId: notification.userId,
     title: notification.title,
     message: notification.message,
@@ -20,6 +20,9 @@ export async function createNotification(notification: Omit<Notification, 'id' |
     ...(notification.teamId !== undefined ? { teamId: notification.teamId } : {}),
     ...(notification.requestId !== undefined ? { requestId: notification.requestId } : {}),
     ...(notification.matchId !== undefined ? { matchId: notification.matchId } : {}),
+    ...(notification.invitationId !== undefined ? { invitationId: notification.invitationId } : {}),
+    ...(notification.actionType !== undefined ? { actionType: notification.actionType } : {}),
+    ...(notification.matchDetails !== undefined ? { matchDetails: notification.matchDetails } : {}),
   }
 
   const notificationRef = db.collection(NOTIFICATIONS_COLLECTION).doc(notificationId)
@@ -36,6 +39,9 @@ export async function createNotification(notification: Omit<Notification, 'id' |
     ...(notification.teamId !== undefined ? { teamId: notification.teamId } : {}),
     ...(notification.requestId !== undefined ? { requestId: notification.requestId } : {}),
     ...(notification.matchId !== undefined ? { matchId: notification.matchId } : {}),
+    ...(notification.invitationId !== undefined ? { invitationId: notification.invitationId } : {}),
+    ...(notification.actionType !== undefined ? { actionType: notification.actionType } : {}),
+    ...(notification.matchDetails !== undefined ? { matchDetails: notification.matchDetails } : {}),
   }
 }
 
@@ -72,12 +78,16 @@ async function buildNotificationsFromSnapshot(querySnapshot: any): Promise<Notif
       userId: data.userId,
       teamId: data.teamId,
       requestId: data.requestId,
+      matchId: data.matchId,
+      invitationId: data.invitationId,
       title: data.title,
       message: data.message,
       type: data.type,
       read: data.read,
       createdAt: data.createdAt?.toDate?.()?.toISOString?.() || String(data.createdAt),
       requestStatus,
+      actionType: data.actionType,
+      matchDetails: data.matchDetails,
     })
   }
 

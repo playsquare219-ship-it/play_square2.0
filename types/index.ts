@@ -158,6 +158,7 @@ export interface Notification {
   teamId?: string;
   requestId?: string;
   matchId?: string;
+  invitationId?: string;
   title: string;
   message: string;
   type:
@@ -169,10 +170,21 @@ export interface Notification {
     | 'match_invite_rejected'
     | 'match_confirmed'
     | 'match_cancelled'
+    | 'match_invitation'
+    | 'match_invitation_accepted'
+    | 'match_invitation_rejected'
+    | 'match_invitation_court_change_requested'
+    | 'match_invitation_time_change_requested'
+    | 'match_change_request_accepted'
+    | 'match_change_request_rejected'
+    | 'match_confirmed_both'
+    | 'match_cancelled_invitation'
     | string;
   read: boolean;
   createdAt: string;
   requestStatus?: 'pending' | 'accepted' | 'rejected' | 'cancelled';
+  actionType?: 'approve' | 'reject' | 'change_court' | 'change_time' | 'cancel';
+  matchDetails?: any;
 }
 
 // ============================================
@@ -198,6 +210,27 @@ export interface Match {
     team2Score: number;
     winnerId?: string;
   };
+  invitationId?: string;
+  invitedUserId?: string;
+  confirmationStatus?: 'pending_confirmation' | 'confirmed' | 'cancelled';
+}
+
+export interface MatchInvitation {
+  id: string;
+  matchId?: string;
+  fromUserId: string;
+  toUserId: string;
+  fromTeamId?: string;
+  toTeamId?: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'court_change_requested' | 'time_change_requested' | 'cancelled';
+  originalProposedDate: string;
+  originalStadium?: string;
+  suggestedDate?: string;
+  suggestedStadium?: string;
+  suggestedTime?: string;
+  bookingId?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ============================================

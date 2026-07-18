@@ -12,6 +12,7 @@ export async function GET() {
     
     // إذا لم يكن هناك توكن، جلب جميع المباريات
     if (!token) {
+      console.log('[API /matches] No token provided, fetching all matches')
       const matches = await getAllMatchesFromDb()
       return NextResponse.json({ matches })
     }
@@ -20,26 +21,46 @@ export async function GET() {
     
     // إذا كان التوكن غير صالح، جلب جميع المباريات
     if (!decoded) {
+      console.log('[API /matches] Invalid token, fetching all matches')
       const matches = await getAllMatchesFromDb()
       return NextResponse.json({ matches })
     }
     
     // الحصول على بيانات المستخدم
-    const user = await findUserById(decoded.userId)
+    let user
+    try {
+      user = await findUserById(decoded.userId)
+    } catch (userError) {
+      console.warn('[API /matches] Failed to fetch user details:', userError)
+      user = null
+    }
     
-    // إذا لم يكن للمستخدم فريق، جلب جميع المباريات
+    // إذا لم يكن للمستخدم فريق أو فشل جلب المستخدم، جلب جميع المباريات
     if (!user || !user.teamId) {
+      console.log('[API /matches] User has no team or user not found, fetching all matches')
       const matches = await getAllMatchesFromDb()
       return NextResponse.json({ matches })
     }
     
-    // جلب المباريات الخاصة بفريق المستخدم فقط
-    const matches = await getMatchesByTeamId(user.teamId)
-    return NextResponse.json({ matches })
+    // حاول جلب المباريات الخاصة بفريق المستخدم
+    try {
+      console.log('[API /matches] Fetching matches for team:', user.teamId)
+      const matches = await getMatchesByTeamId(user.teamId)
+      return NextResponse.json({ matches })
+    } catch (teamError) {
+      console.warn('[API /matches] Failed to fetch team matches, falling back to all matches:', teamError)
+      const matches = await getAllMatchesFromDb()
+      return NextResponse.json({ matches })
+    }
   } catch (error) {
-    console.error('Error fetching matches:', error)
-    const matches = await getAllMatchesFromDb()
-    return NextResponse.json({ matches })
+    console.error('[API /matches] Fatal error fetching matches:', error)
+    try {
+      const matches = await getAllMatchesFromDb()
+      return NextResponse.json({ matches })
+    } catch (fallbackError) {
+      console.error('[API /matches] Fallback to all matches also failed:', fallbackError)
+      return NextResponse.json({ matches: [], error: 'Failed to fetch matches' }, { status: 500 })
+    }
   }
 }
 
