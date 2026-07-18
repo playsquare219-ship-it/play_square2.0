@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Save booking match to Firestore
+    // Save booking match to Firestore with pending_confirmation status
     const bookingMatchRef = await db.collection(BOOKING_MATCHES_COLLECTION).add({
       requestId: requestId || null,
       matchRequestId: matchRequestId || null,
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       commune,
       matchDetails: matchDetails || {},
       createdAt: Timestamp.now(),
-      status: 'confirmed',
+      status: 'pending_confirmation',
       isTeamBooking: true,
     })
 
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       wilaya,
       commune,
       createdAt: new Date().toISOString(),
-      status: 'confirmed',
+      status: 'pending_confirmation',
       isTeamBooking: true,
     })
   } catch (error) {
@@ -91,5 +91,66 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[v0] Error fetching booking matches:', error)
     return NextResponse.json({ bookings: [] })
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { bookingId, action } = body
+
+    if (!bookingId) {
+      return NextResponse.json(
+        { error: 'Missing bookingId' },
+        { status: 400 }
+      )
+    }
+
+    const docRef = db.collection(BOOKING_MATCHES_COLLECTION).doc(bookingId)
+    const doc = await docRef.get()
+
+    if (!doc.exists) {
+      return NextResponse.json(
+        { error: 'Booking not found' },
+        { status: 404 }
+      )
+    }
+
+    if (action === 'confirm') {
+      // Update status to confirmed
+      await docRef.update({
+        status: 'confirmed',
+        confirmedAt: Timestamp.now(),
+      })
+
+      const updatedDoc = await docRef.get()
+      return NextResponse.json({
+        id: bookingId,
+        ...updatedDoc.data(),
+      })
+    } else if (action === 'cancel') {
+      // Update status to cancelled
+      await docRef.update({
+        status: 'cancelled',
+        cancelledAt: Timestamp.now(),
+      })
+
+      const updatedDoc = await docRef.get()
+      return NextResponse.json({
+        id: bookingId,
+        ...updatedDoc.data(),
+      })
+    }
+
+    return NextResponse.json(
+      { error: 'Invalid action' },
+      { status: 400 }
+    )
+  } catch (error) {
+    console.error('[v0] Error updating booking match:', error)
+    return NextResponse.json(
+      { error: 'Failed to update booking match' },
+      { status: 500 }
+    )
   }
 }

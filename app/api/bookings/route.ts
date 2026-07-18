@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Save booking to Firestore
+    // Save booking to Firestore with pending_confirmation status
     const bookingRef = await db.collection(BOOKINGS_COLLECTION).add({
       stadiumId: parseInt(stadiumId),
       stadiumName,
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       wilaya,
       commune,
       createdAt: Timestamp.now(),
-      status: 'confirmed',
+      status: 'pending_confirmation',
     })
 
     return NextResponse.json({
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       wilaya,
       commune,
       createdAt: new Date().toISOString(),
-      status: 'confirmed',
+      status: 'pending_confirmation',
     })
   } catch (error) {
     console.error('[v0] Error creating booking:', error)

@@ -172,29 +172,48 @@ export async function PATCH(request: NextRequest) {
     // Handle different actions
     switch (action) {
       case 'accept': {
-        // Confirm the match
+        // Confirm the match and booking
         if (!matchData) {
           return NextResponse.json({ error: 'matchData is required for accept action' }, { status: 400 })
         }
 
         const result = await confirmMatchInvitation(invitationId, matchData)
 
-        // Send confirmation notification to both parties
+        // Confirm the booking if bookingId exists
+        if (invitation.bookingId) {
+          try {
+            const { db } = await import('@/lib/server/firebase/firestore')
+            await db.collection('booking_matches').doc(invitation.bookingId).update({
+              status: 'confirmed',
+              confirmedAt: (await import('firebase-admin/firestore')).Timestamp.now(),
+            })
+            console.log('[API] Booking confirmed:', invitation.bookingId)
+          } catch (bookingError) {
+            console.error('[API] Failed to confirm booking:', bookingError)
+          }
+        }
+
+        // Send notifications
         try {
           const invitee = await findUserById(decoded.userId)
           
-          // Notify organizer
+          // Notify organizer that booking needs to download PDF
           await createNotification({
             userId: invitation.fromUserId,
-            title: 'تم قبول دعوة المباراة',
-            message: `${invitee?.firstName} ${invitee?.lastName} قبل دعوة المباراة`,
-            type: 'match_invitation_accepted',
+            title: 'تم قبول الحجز - حمّل معلومات المباراة',
+            message: `${invitee?.firstName} ${invitee?.lastName} قبل دعوة المباراة. يرجى تحميل معلومات الحجز`,
+            type: 'match_confirmed_both',
             invitationId,
             matchId: result.matchId,
-            matchDetails: matchData,
+            matchDetails: {
+              ...matchData,
+              toUser: `${invitee?.firstName} ${invitee?.lastName}`,
+              bookingId: invitation.bookingId,
+            },
+            actionType: 'approve',
           })
 
-          // Notify invitee
+          // Notify invitee that match is confirmed
           await createNotification({
             userId: decoded.userId,
             title: 'تم تأكيد المباراة',
@@ -202,7 +221,11 @@ export async function PATCH(request: NextRequest) {
             type: 'match_confirmed_both',
             invitationId,
             matchId: result.matchId,
-            matchDetails: matchData,
+            matchDetails: {
+              ...matchData,
+              fromUser: `${inviter?.firstName} ${inviter?.lastName}`,
+              bookingId: invitation.bookingId,
+            },
           })
         } catch (notifError) {
           console.error('[API] Failed to create confirmation notifications:', notifError)

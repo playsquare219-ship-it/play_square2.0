@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
-import { getNotifications, markNotificationsRead, respondToTeamJoinRequest, deleteTeamJoinRequest, respondToMatchRequest, cancelMatchRequest, respondToMatchInvitation, generateBookingPDF } from '@/lib/client/api'
+import { getNotifications, markNotificationsRead, respondToTeamJoinRequest, deleteTeamJoinRequest, respondToMatchRequest, cancelMatchRequest, respondToMatchInvitation, generateBookingPDF, confirmBooking } from '@/lib/client/api'
 import type { Notification } from '@/types'
 
 export default function NotificationsPage() {
@@ -233,6 +233,28 @@ export default function NotificationsPage() {
     }
   }
 
+  const handleConfirmBooking = async (notification: Notification) => {
+    if (!notification.matchDetails?.bookingId) {
+      toast({ title: 'خطأ', description: 'معرّف الحجز غير متاح.', variant: 'destructive' })
+      return
+    }
+
+    setProcessingRequestIds((prev) => [...prev, notification.matchDetails!.bookingId])
+
+    try {
+      await confirmBooking(notification.matchDetails.bookingId, 'confirm')
+      toast({ title: 'تم تأكيد الحجز', description: 'تم تأكيد الحجز بنجاح.' })
+      
+      // Reload notifications to show updated state
+      loadNotifications(0)
+    } catch (error) {
+      toast({ title: 'فشل تأكيد الحجز', description: 'حدث خطأ عند محاولة تأكيد الحجز.', variant: 'destructive' })
+      console.error('Error confirming booking:', error)
+    } finally {
+      setProcessingRequestIds((prev) => prev.filter((id) => id !== notification.matchDetails?.bookingId))
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#121212] pb-20">
       <div className="sticky top-0 z-10 bg-[#121212]/95 backdrop-blur-sm border-b border-[#2C2C2C]">
@@ -390,9 +412,10 @@ export default function NotificationsPage() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <Button
                       onClick={() => handleDownloadPDF(notification)}
+                      disabled={processingRequestIds.includes(notification.invitationId!)}
                       className="bg-[#8b5cf6] hover:bg-[#7c3aed] text-white"
                     >
-                      تحميل PDF
+                      📥 تحميل PDF
                     </Button>
                     <Button
                       onClick={() => handleMatchInvitationResponse(notification, 'cancel')}
@@ -400,6 +423,17 @@ export default function NotificationsPage() {
                       className="bg-[#ef4444] hover:bg-[#dc2626] text-white"
                     >
                       إلغاء المباراة
+                    </Button>
+                  </div>
+                )}
+                {notification.type === 'match_confirmed_both' && notification.matchDetails?.bookingId && !notification.invitationId && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button
+                      onClick={() => handleDownloadPDF(notification)}
+                      disabled={processingRequestIds.includes(notification.matchDetails?.bookingId)}
+                      className="bg-[#8b5cf6] hover:bg-[#7c3aed] text-white"
+                    >
+                      📥 تحميل معلومات الحجز PDF
                     </Button>
                   </div>
                 )}

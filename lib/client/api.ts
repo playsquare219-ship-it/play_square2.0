@@ -578,6 +578,24 @@ export async function generateBookingPDF(input: {
   }
 }
 
+export async function confirmBooking(bookingId: string, action: 'confirm' | 'cancel'): Promise<void> {
+  try {
+    const res = await fetch('/api/booking-matches', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ bookingId, action }),
+    })
+    if (!res.ok) {
+      const errorText = await res.text()
+      throw new Error(`Failed to ${action} booking: ${errorText}`)
+    }
+  } catch (error) {
+    console.error('Error confirming booking:', error)
+    throw error
+  }
+}
+
 // ============================================
 // Direct Challenges API
 // ============================================
