@@ -6,5 +6,8 @@ export * from "@/lib/server/db/match-requests"
 export * from "@/lib/server/db/direct-challenges"
 export * from "@/lib/server/db/team-requests"
 export * from "@/lib/server/db/notifications"
+export * from "@/lib/server/db/match-reports"
 export * from "@/lib/server/db/locations"
+export * from "@/lib/server/db/tournaments"
+export * from "@/lib/server/db/tournament-fixtures"
 

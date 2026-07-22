@@ -6,7 +6,7 @@ import { SESSION_COOKIE_NAME } from "@/lib/server/auth/session"
 export const runtime = "nodejs"
 
 export const config = {
-  matcher: ["/home/:path*", "/team/:path*", "/matches/:path*", "/squad/:path*", "/settings/:path*"],
+  matcher: ["/home/:path*", "/team/:path*", "/matches/:path*", "/squad/:path*", "/settings/:path*", "/tournaments/:path*"],
 }
 
 export function middleware(req: NextRequest) {

@@ -4,7 +4,7 @@
  * All actual database operations are handled server-side through API routes
  */
 
-import type { Team, Match, MatchRequest, DirectChallenge, TeamCreateInput } from "@/types"
+import type { Team, Match, MatchRequest, DirectChallenge, TeamCreateInput, MatchReport, Tournament, TournamentFixture, TournamentStanding, TournamentGroup } from "@/types"
 
 // ============================================
 // Teams API
@@ -351,6 +351,105 @@ export async function cancelMatch(matchId: string): Promise<void> {
 }
 
 // ============================================
+// Match Reports API
+// ============================================
+
+export async function submitMatchReport(
+  matchId: string,
+  team1Score: number,
+  team2Score: number
+): Promise<{ report: MatchReport; verification: any }> {
+  try {
+    const res = await fetch("/api/match-reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ matchId, team1Score, team2Score }),
+    })
+    if (!res.ok) {
+      const errorText = await res.text()
+      throw new Error(`Failed to submit report: ${errorText}`)
+    }
+    return await res.json()
+  } catch (error) {
+    console.error("Error submitting match report:", error)
+    throw error
+  }
+}
+
+export async function getMatchReports(matchId: string): Promise<MatchReport[]> {
+  try {
+    const res = await fetch(`/api/match-reports?matchId=${encodeURIComponent(matchId)}`, {
+      cache: "no-store",
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return data.reports || []
+  } catch (error) {
+    console.error("Error fetching match reports:", error)
+    return []
+  }
+}
+
+export async function getUserMatchReport(
+  matchId: string,
+  userId: string
+): Promise<MatchReport | null> {
+  try {
+    const res = await fetch(
+      `/api/match-reports?matchId=${encodeURIComponent(matchId)}&userId=${encodeURIComponent(userId)}`,
+      { cache: "no-store", credentials: "include" }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.report || null
+  } catch (error) {
+    console.error("Error fetching user match report:", error)
+    return null
+  }
+}
+
+// ============================================
+// Match Status API
+// ============================================
+
+export async function startMatch(matchId: string): Promise<void> {
+  try {
+    const res = await fetch("/api/match-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ matchId, action: "start" }),
+    })
+    if (!res.ok) {
+      const errorText = await res.text()
+      throw new Error(`Failed to start match: ${errorText}`)
+    }
+  } catch (error) {
+    console.error("Error starting match:", error)
+    throw error
+  }
+}
+
+export async function endMatch(matchId: string): Promise<void> {
+  try {
+    const res = await fetch("/api/match-status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ matchId, action: "end" }),
+    })
+    if (!res.ok) {
+      const errorText = await res.text()
+      throw new Error(`Failed to end match: ${errorText}`)
+    }
+  } catch (error) {
+    console.error("Error ending match:", error)
+    throw error
+  }
+}
+
+// ============================================
 // Match Requests API
 // ============================================
 
@@ -504,6 +603,154 @@ export async function saveDirectChallenge(
   } catch (error) {
     console.error("Error saving direct challenge:", error)
     throw error
+  }
+}
+
+// ============================================
+// Tournaments API
+// ============================================
+
+export async function getTournaments(status?: string): Promise<Tournament[]> {
+  try {
+    const url = status && status !== "all"
+      ? `/api/tournaments?status=${encodeURIComponent(status)}`
+      : "/api/tournaments"
+    const res = await fetch(url, { cache: "no-store" })
+    if (!res.ok) return []
+    const data = await res.json()
+    return data.tournaments || []
+  } catch (error) {
+    console.error("Error fetching tournaments:", error)
+    return []
+  }
+}
+
+export async function getTournamentById(tournamentId: string): Promise<Tournament | null> {
+  try {
+    const res = await fetch(`/api/tournaments?id=${encodeURIComponent(tournamentId)}`, {
+      cache: "no-store",
+    })
+    if (!res.ok) {
+      console.log("[DEBUG] getTournamentById: response not ok:", res.status, res.statusText)
+      return null
+    }
+    const data = await res.json()
+    console.log("[DEBUG] getTournamentById: raw API response keys:", Object.keys(data))
+    if (data.tournament) {
+      console.log("[DEBUG] getTournamentById: tournament.status:", JSON.stringify(data.tournament.status), "type:", typeof data.tournament.status)
+      console.log("[DEBUG] getTournamentById: tournament.allKeys:", Object.keys(data.tournament))
+    }
+    return data.tournament || null
+  } catch (error) {
+    console.error("Error fetching tournament:", error)
+    return null
+  }
+}
+
+export async function getTournamentFixtures(tournamentId: string): Promise<TournamentFixture[]> {
+  try {
+    const res = await fetch(`/api/tournaments/${encodeURIComponent(tournamentId)}/fixtures`, {
+      cache: "no-store",
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return data.fixtures || []
+  } catch (error) {
+    console.error("Error fetching tournament fixtures:", error)
+    return []
+  }
+}
+
+export async function getTournamentStandings(tournamentId: string): Promise<TournamentStanding[]> {
+  try {
+    const res = await fetch(`/api/tournaments/${encodeURIComponent(tournamentId)}/standings`, {
+      cache: "no-store",
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return data.standings || []
+  } catch (error) {
+    console.error("Error fetching tournament standings:", error)
+    return []
+  }
+}
+
+export async function getTournamentGroups(tournamentId: string): Promise<TournamentGroup[]> {
+  try {
+    const res = await fetch(`/api/tournaments/${encodeURIComponent(tournamentId)}/groups`, {
+      cache: "no-store",
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return data.groups || []
+  } catch (error) {
+    console.error("Error fetching tournament groups:", error)
+    return []
+  }
+}
+
+export async function getTournamentMatches(tournamentId: string): Promise<Match[]> {
+  try {
+    const res = await fetch(`/api/tournaments/${encodeURIComponent(tournamentId)}/matches`, {
+      cache: "no-store",
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return data.matches || []
+  } catch (error) {
+    console.error("Error fetching tournament matches:", error)
+    return []
+  }
+}
+
+export async function joinTournament(tournamentId: string, teamId: string): Promise<void> {
+  try {
+    const res = await fetch(`/api/tournaments/${encodeURIComponent(tournamentId)}/join`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ teamId }),
+    })
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.error || "Failed to join tournament")
+    }
+  } catch (error) {
+    console.error("Error joining tournament:", error)
+    throw error
+  }
+}
+
+export async function leaveTournament(tournamentId: string, teamId: string): Promise<void> {
+  try {
+    const res = await fetch(`/api/tournaments/${encodeURIComponent(tournamentId)}/leave`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ teamId }),
+    })
+    if (!res.ok) {
+      const data = await res.json()
+      throw new Error(data.error || "Failed to leave tournament")
+    }
+  } catch (error) {
+    console.error("Error leaving tournament:", error)
+    throw error
+  }
+}
+
+export async function getMyTournaments(): Promise<Tournament[]> {
+  try {
+    const res = await fetch("/api/tournaments/my", {
+      cache: "no-store",
+      credentials: "include",
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return data.tournaments || []
+  } catch (error) {
+    console.error("Error fetching my tournaments:", error)
+    return []
   }
 }
 

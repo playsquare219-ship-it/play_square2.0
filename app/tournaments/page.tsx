@@ -1,36 +1,100 @@
 "use client"
 
-import { ArrowLeft, Trophy } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useMemo } from "react"
+import { Trophy } from "lucide-react"
 import BottomNav from "@/components/bottom-nav"
+import { TournamentTopBar } from "@/components/tournaments/tournament-top-bar"
+import { HeroTitle } from "@/components/tournaments/hero-title"
+import { FilterTabs } from "@/components/tournaments/filter-tabs"
+import { TournamentCard } from "@/components/tournaments/tournament-card"
+import { getTournaments } from "@/lib/client/api"
+import type { Tournament } from "@/types"
+
+const FILTER_TABS = [
+  { id: "all", label: "All" },
+  { id: "upcoming", label: "Upcoming" },
+  { id: "ongoing", label: "Ongoing" },
+  { id: "past", label: "Past" },
+]
+
+const UPCOMING_STATUSES = ["registration", "registration_open", "registration_closed", "draft"]
+const ONGOING_STATUSES = ["ongoing"]
+const PAST_STATUSES = ["completed", "cancelled", "archived"]
 
 export default function TournamentsPage() {
-  const router = useRouter()
+  const [tournaments, setTournaments] = useState<Tournament[]>([])
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState("all")
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      setLoading(true)
+      try {
+        const data = await getTournaments()
+        if (!cancelled) {
+          setTournaments(data)
+          setLoading(false)
+        }
+      } catch {
+        if (!cancelled) {
+          setTournaments([])
+          setLoading(false)
+        }
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [])
+
+  const filteredTournaments = useMemo(() => {
+    if (activeTab === "all") return tournaments
+    if (activeTab === "upcoming") return tournaments.filter((t) => UPCOMING_STATUSES.includes(t.status))
+    if (activeTab === "ongoing") return tournaments.filter((t) => ONGOING_STATUSES.includes(t.status))
+    if (activeTab === "past") return tournaments.filter((t) => PAST_STATUSES.includes(t.status))
+    return tournaments
+  }, [tournaments, activeTab])
 
   return (
-    <div className="min-h-screen bg-[#121212] pb-20">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-[#121212]/95 backdrop-blur-sm border-b border-[#2C2C2C]">
-        <div className="px-4 py-4">
-          <div className="flex items-center gap-3">
-            <button onClick={() => router.back()} className="p-2 hover:bg-[#1E1E1E] rounded-lg transition-all">
-              <ArrowLeft className="w-5 h-5 text-white" />
-            </button>
-            <h1 className="text-xl font-bold">Tournaments</h1>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#0a0a0a] pb-20">
+      <TournamentTopBar title="Football Leagues" />
+      <HeroTitle>Football Leagues</HeroTitle>
+
+      <div className="mb-4">
+        <FilterTabs tabs={FILTER_TABS} activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
 
-      {/* Coming Soon Content */}
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-180px)] px-4">
-        <div className="w-20 h-20 bg-[#FF3B3F]/10 rounded-full flex items-center justify-center mb-6">
-          <Trophy className="w-10 h-10 text-[#FF3B3F]" />
+      {loading ? (
+        <div className="space-y-4 px-[14px]" aria-label="Loading tournaments" role="status">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-[#1a1a1a] rounded-2xl overflow-hidden animate-pulse">
+              <div className="h-[190px] bg-[#222222]" />
+              <div className="p-4 space-y-2">
+                <div className="h-5 bg-[#222222] rounded w-3/4" />
+                <div className="h-4 bg-[#222222] rounded w-1/2" />
+              </div>
+            </div>
+          ))}
         </div>
-        <h2 className="text-2xl font-bold text-white mb-3 text-center">Tournaments Coming Soon</h2>
-        <p className="text-[#A0A0A0] text-center max-w-sm">
-          Join exciting tournaments and compete with teams across Algeria. Feature launching soon!
-        </p>
-      </div>
+      ) : filteredTournaments.length === 0 ? (
+        <div className="flex flex-col items-center justify-center min-h-[300px] px-4" role="status">
+          <div className="w-16 h-16 bg-[#e8352a]/10 rounded-full flex items-center justify-center mb-4">
+            <Trophy className="w-8 h-8 text-[#e8352a]" />
+          </div>
+          <h3 className="text-lg font-semibold text-white mb-1">No tournaments found</h3>
+          <p className="text-[#888888] text-sm text-center">
+            {activeTab === "all"
+              ? "No tournaments available yet"
+              : `No ${activeTab} tournaments found`}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4 px-[14px]">
+          {filteredTournaments.map((tournament) => (
+            <TournamentCard key={tournament.id} tournament={tournament} />
+          ))}
+        </div>
+      )}
 
       <BottomNav active="tournaments" />
     </div>

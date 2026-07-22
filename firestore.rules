@@ -1,55 +1,172 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // دالة للتحقق من المصادقة
+
     function isAuthenticated() {
       return request.auth != null;
     }
-    
-    // دالة للتحقق من أن المستخدم هو صاحب البيانات
+
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
-    
-    // دالة للتحقق من أن المستخدم مدير (اختياري)
+
     function isAdmin() {
-      return request.auth.token.admin == true;
+      return request.auth.token.admin == true || request.auth.token.role == 'admin';
     }
-    
-    // ============================================
-    // قواعد مجموعة users
-    // ============================================
+
+    function isModerator() {
+      return request.auth.token.role in ['admin', 'moderator'];
+    }
+
+    function isCaptain(teamId) {
+      return isAuthenticated()
+        && get(/databases/$(database)/documents/teams/$(teamId)).data.captainId == request.auth.uid;
+    }
+
+    function isTeamMember(teamId) {
+      return isAuthenticated()
+        && request.auth.uid in get(/databases/$(database)/documents/teams/$(teamId)).data.players;
+    }
+
     match /users/{userId} {
-      // قراءة: المستخدم يمكنه قراءة بياناته فقط
       allow read: if isAuthenticated() && isOwner(userId);
-      
-      // كتابة/تحديث: المستخدم يمكنه تعديل بياناته فقط
-      allow write: if isAuthenticated() && isOwner(userId);
-      
-      // إنشاء: أي مستخدم مصادق يمكنه إنشاء ملفه الشخصي
       allow create: if isAuthenticated() && request.resource.data.id == userId;
+      allow update: if isAuthenticated() && isOwner(userId)
+        && !request.resource.data.keys().hasAny(['password', 'passwordHash', 'isAdmin', 'role', 'verificationToken',
+          'accountStatus', 'mfaEnabled', 'mfaType', 'mfaEnrolledAt', 'deletedAt', 'email']);
     }
-    
-    // ============================================
-    // قواعد مجموعات أخرى (مثال)
-    // ============================================
-    
-    // مثال: منشورات اللعبة
-    match /posts/{postId} {
-      allow read: if true;  //任何人都可以 قراءة المنشورات
-      allow write: if isAuthenticated();  // فقط المسجلين يمكنهم الكتابة
+
+    match /sessions/{userId} {
+      allow read: if isAuthenticated() && isOwner(userId);
+      allow write: if isAuthenticated() && isOwner(userId);
+      allow delete: if isAuthenticated() && isOwner(userId);
     }
-    
-    // مثال: غرف اللعب
-    match /rooms/{roomId} {
-      allow read: if true;
+
+    match /sessions/{userId}/devices/{deviceId} {
+      allow read: if isAuthenticated() && isOwner(userId);
+      allow write: if isAuthenticated() && isOwner(userId);
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isAuthenticated() && isModerator();
       allow write: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow delete: if false;
     }
-    
-    // مثال: إشعارات المستخدم
-    match /notifications/{userId}/{notificationId} {
-      allow read, write: if isAuthenticated() && isOwner(userId);
+
+    match /roleSyncRecords/{recordId} {
+      allow read: if isAuthenticated() && isModerator();
+      allow write: if false;
+      allow delete: if false;
+    }
+
+    match /rate_limits/{key} {
+      allow read: if false;
+      allow write: if false;
+      allow create: if false;
+      allow delete: if false;
+    }
+
+    match /refresh_tokens/{tokenId} {
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
+      allow write: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+
+    match /mfa_backup_codes/{userId} {
+      allow read: if isAuthenticated() && isOwner(userId);
+      allow write: if isAuthenticated() && isOwner(userId);
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+
+    match /teams/{teamId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && isCaptain(teamId);
+      allow delete: if isAuthenticated() && isCaptain(teamId);
+    }
+
+    match /matches/{matchId} {
+      allow read: if true;
+      allow create: if isAuthenticated()
+        && request.resource.data.keys().hasAll(['team1Id', 'team2Id', 'dateTime']);
+      allow update: if isAuthenticated()
+        && (isCaptain(request.resource.data.team1Id)
+          || isCaptain(request.resource.data.team2Id));
+      allow delete: if false;
+    }
+
+    match /tournaments/{tournamentId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated()
+        && resource.data.createdByUserId == request.auth.uid;
+      allow delete: if isAuthenticated()
+        && resource.data.createdByUserId == request.auth.uid;
+    }
+
+    match /tournament_fixtures/{fixtureId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if false;
+    }
+
+    match /match_requests/{requestId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if false;
+    }
+
+    match /team_join_requests/{requestId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    match /notifications/{notificationId} {
+      allow read, write: if isAuthenticated()
+        && resource.data.userId == request.auth.uid;
+    }
+
+    match /direct_challenges/{challengeId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && (
+        resource.data.fromTeamId in get(/databases/$(database)/documents/teams/$(resource.data.fromTeamId)).data.players
+      );
+    }
+
+    match /matchmaking_queue/{entryId} {
+      allow read: if true;
+      allow write: if isAuthenticated()
+        && request.resource.data.keys().hasAll(['teamId', 'mode']);
+    }
+
+    match /stadiums/{stadiumId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /wilayas/{wilayaId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /baladias/{baladiaId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /pending_registrations/{regId} {
+      allow read: if false;
+      allow write: if false;
+      allow create: if false;
+      allow delete: if false;
     }
   }
 }

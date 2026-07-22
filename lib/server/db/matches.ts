@@ -35,6 +35,29 @@ export async function getAllMatchesFromDb(): Promise<Match[]> {
 }
 
 /**
+ * الحصول على المباريات الخاصة ببطولة معين
+ */
+export async function getMatchesByTournamentIdFromDb(tournamentId: string): Promise<Match[]> {
+  try {
+    const querySnapshot = await db
+      .collection(MATCHES_COLLECTION)
+      .where("tournamentId", "==", tournamentId)
+      .orderBy("dateTime", "asc")
+      .get()
+
+    const matches: Match[] = []
+    querySnapshot.forEach((doc) => {
+      matches.push({ id: doc.id, ...doc.data() } as Match)
+    })
+
+    return matches
+  } catch (error) {
+    console.error("Error getting matches by tournament ID:", error)
+    throw new Error("Failed to get tournament matches")
+  }
+}
+
+/**
  * الحصول على مبارة حسب ID
  */
 export async function getMatchById(matchId: string): Promise<Match | null> {

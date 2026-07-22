@@ -169,6 +169,18 @@ export interface Notification {
     | 'match_invite_rejected'
     | 'match_confirmed'
     | 'match_cancelled'
+    | 'match_report_request'
+    | 'match_result_verified'
+    | 'match_result_disputed'
+    | 'tournament_invite'
+    | 'tournament_started'
+    | 'tournament_ended'
+    | 'tournament_match_ready'
+    | 'tournament_fixture_generated'
+    | 'tournament_registration_closed'
+    | 'tournament_finalists_decided'
+    | 'tournament_walkover'
+    | 'recommendation_tournament'
     | string;
   read: boolean;
   createdAt: string;
@@ -189,15 +201,34 @@ export interface Match {
   wilaya?: string;
   baladia?: string;
   dateTime: string;
-  status: 'scheduled' | 'completed' | 'cancelled';
+  endTime?: string;
+  durationMinutes?: number;
+  status: 'scheduled' | 'completed' | 'cancelled' | 'live' | 'reporting' | 'verifying' | 'verified' | 'disputed';
   createdByUserId: string;
   createdAt: string;
   updatedAt: string;
+  tournamentId?: string;
+  tournamentRound?: string;
   result?: {
     team1Score: number;
     team2Score: number;
     winnerId?: string;
   };
+  verifiedAt?: string;
+}
+
+// ============================================
+// أنواع تقرير المباراة (Match Report Types)
+// ============================================
+
+export interface MatchReport {
+  id: string;
+  matchId: string;
+  userId: string;
+  teamId: string;
+  team1Score: number;
+  team2Score: number;
+  createdAt: string;
 }
 
 // ============================================
@@ -219,6 +250,130 @@ export interface MatchRequest {
   createdByUserId: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// ============================================
+// أنواع البطولة (Tournament Types)
+// ============================================
+
+export type TournamentStatus = 'registration' | 'ongoing' | 'completed' | 'cancelled'
+
+export type TournamentType = 'knockout' | 'league' | 'group_and_knockout'
+
+export interface Tournament {
+  id: string
+  name: string
+  description?: string
+  type: TournamentType
+  status: TournamentStatus
+  maxTeams: number
+  teams: TournamentTeam[]
+  rounds?: TournamentRound[]
+  groups?: TournamentGroup[]
+  startDate: string
+  endDate?: string
+  registrationFee?: number
+  prize?: number
+  minPlayersPerTeam?: number
+  maxPlayersPerTeam?: number
+  emoji?: string
+  createdByUserId: string
+  createdAt: string
+  updatedAt: string
+  phaseConfig?: TournamentPhaseConfig
+  venueConfig?: TournamentVenueConfig
+  scheduleConfig?: TournamentScheduleConfig
+  rules?: TournamentRules
+}
+
+export interface TournamentTeam {
+  teamId: string
+  teamName: string
+  captainId: string
+  points: number
+  wins: number
+  draws: number
+  losses: number
+  goalsFor: number
+  goalsAgainst: number
+  joinedAt: string
+}
+
+export interface TournamentRound {
+  roundName: string
+  matches: string[]
+  startDate?: string
+  endDate?: string
+}
+
+export interface TournamentGroup {
+  id: string
+  name: string
+  teamIds: string[]
+  fixtureIds: string[]
+}
+
+export type TournamentFixtureStatus = 'pending' | 'scheduled' | 'completed' | 'bye' | 'walkover'
+
+export interface TournamentFixture {
+  id: string
+  tournamentId: string
+  round: number
+  roundName: string
+  matchIndex: number
+  team1Id: string | null
+  team2Id: string | null
+  matchId: string | null
+  status: TournamentFixtureStatus
+  winnerId: string | null
+  score1: number | null
+  score2: number | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type SeedingMethod = 'rating' | 'leaderboard' | 'random' | 'manual'
+
+export interface TournamentPhaseConfig {
+  groupCount?: number
+  advancePerGroup?: number
+  thirdPlaceMatch?: boolean
+  seedingMethod: SeedingMethod
+  allowByes?: boolean
+}
+
+export interface TournamentVenueConfig {
+  wilayaId?: string
+  baladiaId?: string
+  stadiumId?: string
+  autoAssign?: boolean
+}
+
+export interface TournamentScheduleConfig {
+  matchIntervalMinutes?: number
+  matchStartDate?: string
+  matchEndDate?: string
+  blackoutDates?: string[]
+}
+
+export interface TournamentRules {
+  extraTime?: boolean
+  penalties?: boolean
+  drawInKnockout?: 'extra_time' | 'penalties' | 'coin_toss'
+  substitutionLimit?: number
+}
+
+export interface TournamentStanding {
+  teamId: string
+  teamName: string
+  played: number
+  wins: number
+  draws: number
+  losses: number
+  goalsFor: number
+  goalsAgainst: number
+  goalDifference: number
+  points: number
 }
 
 // ============================================

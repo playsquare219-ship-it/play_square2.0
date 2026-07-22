@@ -1,0 +1,18 @@
+
+> play-square-pwa@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.3:3000
+✓ Ready in 4.9s
+
+○ Compiling / ...
+ GET / 200 in 13.6s (next.js: 11.7s, application-code: 1823ms)
+ GET /logo.png 404 in 2.3s (next.js: 1551ms, application-code: 710ms)
+ GET /auth 200 in 1706ms (next.js: 1575ms, application-code: 131ms)
+○ Compiling /_error ...
+ GET /api/auth/session 500 in 13.3s (next.js: 12.2s, application-code: 1048ms)
+ GET /auth/login 200 in 4.3s (next.js: 4.1s, application-code: 187ms)
+ GET /auth/login 200 in 299ms (next.js: 50ms, application-code: 249ms)
+ POST /api/auth/login 500 in 918ms (next.js: 889ms, application-code: 29ms)
