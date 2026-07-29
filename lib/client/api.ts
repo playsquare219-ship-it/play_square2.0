@@ -703,13 +703,17 @@ export async function getTournamentMatches(tournamentId: string): Promise<Match[
   }
 }
 
-export async function joinTournament(tournamentId: string, teamId: string): Promise<void> {
+export async function joinTournament(
+  tournamentId: string,
+  teamId: string,
+  registrationData?: { teamName?: string; captainName?: string; playerNames?: string[] }
+): Promise<void> {
   try {
     const res = await fetch(`/api/tournaments/${encodeURIComponent(tournamentId)}/join`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ teamId }),
+      body: JSON.stringify({ teamId, ...registrationData }),
     })
     if (!res.ok) {
       const data = await res.json()

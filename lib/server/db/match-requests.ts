@@ -20,7 +20,6 @@ const MATCH_REQUESTS_COLLECTION = "match_requests"
 export function getPendingRequestsForTeam(teamId: string): MatchRequest[] {
   // Note: This is a synchronous function that returns empty array
   // For real usage, implement async version with Firestore
-  console.warn("getPendingRequestsForTeam should be async. This is a placeholder.")
   return []
 }
 
@@ -30,7 +29,6 @@ export function getPendingRequestsForTeam(teamId: string): MatchRequest[] {
 export function getOutgoingRequestsForTeam(teamId: string): MatchRequest[] {
   // Note: This is a synchronous function that returns empty array
   // For real usage, implement async version with Firestore
-  console.warn("getOutgoingRequestsForTeam should be async. This is a placeholder.")
   return []
 }
 
@@ -175,7 +173,6 @@ export function createMatchRequest(input: {
     updatedAt: now,
   }
   
-  console.log('[Database] Created match request:', requestId)
   return newRequest
 }
 
@@ -205,7 +202,6 @@ export function createAutoScheduledMatchRequest(input: {
     updatedAt: now,
   }
   
-  console.log('[Database] Created auto-scheduled match request:', requestId)
   return newRequest
 }
 
@@ -240,7 +236,6 @@ export function updateMatchRequestDetails(input: {
     updatedAt: now,
   }
   
-  console.log('[Database] Updated match request details:', input.requestId)
   return updatedRequest
 }
 
@@ -253,8 +248,6 @@ export function respondToMatchRequest(input: {
   actorTeamId?: string
 }): any {
   // For now, return a placeholder response
-  console.log('[Database] Responded to match request:', input.requestId, input.action)
-  
   return {
     success: true,
     message: `Match request ${input.action}`,
@@ -303,7 +296,6 @@ export async function createMatchRequestAsync(input: {
     const requestRef = db.collection(MATCH_REQUESTS_COLLECTION).doc(requestId)
     await requestRef.set(newRequest)
     
-    console.log('[Database] Created match request:', requestId)
     return { id: requestId, ...newRequest }
   } catch (error) {
     console.error("Error creating match request:", error)
@@ -358,7 +350,6 @@ export async function respondToMatchRequestAsync(input: {
         })
       }
 
-      console.log('[Database] Accepted match request:', input.requestId)
       return { success: true, message: "Match request accepted" }
     } else if (input.action === "rejected") {
       await requestRef.update({
@@ -378,7 +369,6 @@ export async function respondToMatchRequestAsync(input: {
         })
       }
 
-      console.log('[Database] Rejected match request:', input.requestId)
       return { success: true, message: "Match request rejected" }
     } else if (input.action === "cancelled") {
       await requestRef.update({
@@ -400,7 +390,6 @@ export async function respondToMatchRequestAsync(input: {
         })
       }
 
-      console.log('[Database] Cancelled match request:', input.requestId)
       return { success: true, message: "Match request cancelled" }
     }
 

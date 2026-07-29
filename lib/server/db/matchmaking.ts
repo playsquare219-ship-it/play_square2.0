@@ -107,7 +107,6 @@ export function enqueueTeamForMatchmaking(input: { team: Team; mode: "instant" |
       timestamp: now,
     })
     
-    console.log(`[Database] Team ${input.team.id} enqueued for ${input.mode} matchmaking`)
     
     return {
       teamId: input.team.id,
@@ -126,7 +125,6 @@ export function enqueueTeamForMatchmaking(input: { team: Team; mode: "instant" |
 export function cancelMatchmaking(teamId: string): void {
   try {
     matchmakingState.delete(teamId)
-    console.log(`[Database] Cancelled matchmaking for team ${teamId}`)
   } catch (error) {
     console.error("Error cancelling matchmaking:", error)
     throw new Error("Failed to cancel matchmaking")
@@ -192,7 +190,6 @@ export async function recordMatchmakingMatch(team1Id: string, team2Id: string): 
     await db.collection(MATCHMAKING_QUEUE_COLLECTION).doc(team1Id).delete()
     await db.collection(MATCHMAKING_QUEUE_COLLECTION).doc(team2Id).delete()
     
-    console.log(`[Database] Recorded matchmaking match between ${team1Id} and ${team2Id}`)
   } catch (error) {
     console.error("Error recording matchmaking match:", error)
     throw new Error("Failed to record matchmaking match")

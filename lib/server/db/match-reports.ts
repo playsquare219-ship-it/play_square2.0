@@ -86,7 +86,6 @@ export async function createMatchReport(
     const reportRef = db.collection(MATCH_REPORTS_COLLECTION).doc(reportId)
     await reportRef.set(newReport)
 
-    console.log("[Database] Created match report:", reportId)
     return { id: reportId, ...newReport }
   } catch (error) {
     console.error("Error creating match report:", error)

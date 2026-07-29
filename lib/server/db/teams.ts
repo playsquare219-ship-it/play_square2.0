@@ -57,7 +57,6 @@ export function searchTeams(query: string, excludeTeamId?: string): Team[] {
   // Note: This is a synchronous function that only searches in-memory
   // For a real search, you should use Firestore queries
   // This is a placeholder implementation
-  console.warn("searchTeams is a synchronous placeholder. Consider implementing Firestore search.")
   return []
 }
 
@@ -135,7 +134,6 @@ export async function createTeam(input: TeamCreateInput): Promise<Team> {
     const teamRef = db.collection(TEAMS_COLLECTION).doc(teamId)
     await teamRef.set(newTeam)
     
-    console.log('[Database] Created team:', teamId)
     return { id: teamId, ...newTeam }
   } catch (error) {
     console.error("Error creating team:", error)
@@ -149,7 +147,6 @@ export async function createTeam(input: TeamCreateInput): Promise<Team> {
 export async function upsertTeam(team: Team): Promise<Team> {
   // For now, this is synchronous and returns the team as-is
   // In a real implementation, you would call Firestore
-  console.log('[Database] Upserting team:', team.id)
   return team
 }
 
@@ -164,7 +161,6 @@ export async function updateTeam(teamId: string, updates: Partial<Omit<Team, "id
       updatedAt: new Date().toISOString(),
     })
     
-    console.log('[Database] Updated team:', teamId)
   } catch (error) {
     console.error("Error updating team:", error)
     throw new Error("Failed to update team")
@@ -183,7 +179,6 @@ export async function addPlayerToTeam(teamId: string, playerId: string): Promise
       updatedAt: new Date().toISOString(),
     })
     
-    console.log('[Database] Added player to team:', teamId, playerId)
   } catch (error) {
     console.error("Error adding player to team:", error)
     throw new Error("Failed to add player")
@@ -202,7 +197,6 @@ export async function removePlayerFromTeam(teamId: string, playerId: string): Pr
       updatedAt: new Date().toISOString(),
     })
     
-    console.log('[Database] Removed player from team:', teamId, playerId)
   } catch (error) {
     console.error("Error removing player from team:", error)
     throw new Error("Failed to remove player")
@@ -217,7 +211,6 @@ export async function deleteTeam(teamId: string): Promise<void> {
     const teamRef = db.collection(TEAMS_COLLECTION).doc(teamId)
     await teamRef.delete()
     
-    console.log('[Database] Deleted team:', teamId)
   } catch (error) {
     console.error("Error deleting team:", error)
     throw new Error("Failed to delete team")

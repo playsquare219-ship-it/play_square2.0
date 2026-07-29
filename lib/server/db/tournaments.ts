@@ -57,11 +57,6 @@ export async function getTournamentByIdFromDb(tournamentId: string): Promise<Tou
     }
 
     const raw = doc.data()
-    console.log("[DEBUG] getTournamentByIdFromDb raw Firestore document:", JSON.stringify(raw, null, 2))
-    console.log("[DEBUG] raw.status:", raw?.status, "type:", typeof raw?.status)
-    console.log("[DEBUG] raw.maxTeams:", raw?.maxTeams)
-    console.log("[DEBUG] raw.teams:", Array.isArray(raw?.teams) ? raw.teams.length : "NOT_ARRAY")
-    console.log("[DEBUG] raw keys:", raw ? Object.keys(raw) : "null")
     return { id: doc.id, ...raw, teams: raw?.teams || [], groups: raw?.groups || [], rounds: raw?.rounds || [] } as Tournament
   } catch (error) {
     console.error("Error getting tournament by ID:", error)
@@ -170,7 +165,6 @@ export async function joinTournamentInDb(
       })
     })
 
-    console.log("[Database] Team joined tournament:", tournamentId, team.teamId)
   } catch (error) {
     console.error("Error joining tournament:", error)
     throw new Error("Failed to join tournament")
@@ -207,7 +201,6 @@ export async function leaveTournamentInDb(
       })
     })
 
-    console.log("[Database] Team left tournament:", tournamentId, teamId)
   } catch (error) {
     console.error("Error leaving tournament:", error)
     throw new Error("Failed to leave tournament")

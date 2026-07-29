@@ -9,6 +9,13 @@ import {
 } from "@/lib/server/db/tournaments"
 import type { TournamentTeam } from "@/types"
 
+type JoinTournamentBody = {
+  teamId?: string
+  teamName?: string
+  captainName?: string
+  playerNames?: string[]
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -33,7 +40,7 @@ export async function POST(
       )
     }
 
-    const body = (await request.json()) as { teamId?: string }
+    const body = (await request.json()) as JoinTournamentBody
     if (!body.teamId) {
       return NextResponse.json(
         { success: false, error: "teamId is required" },
@@ -106,10 +113,17 @@ export async function POST(
       )
     }
 
+    const captainName = body.captainName?.trim() || [user.firstName, user.lastName].filter(Boolean).join(" ") || undefined
+    const playerNames = (body.playerNames || [])
+      .map((name) => name?.trim())
+      .filter((name): name is string => Boolean(name))
+
     const tournamentTeam: TournamentTeam = {
       teamId: team.id,
-      teamName: team.name,
+      teamName: body.teamName?.trim() || team.name,
       captainId: team.captainId,
+      captainName,
+      playerNames,
       points: 0,
       wins: 0,
       draws: 0,

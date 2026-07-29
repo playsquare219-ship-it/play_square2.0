@@ -190,7 +190,6 @@ export async function createUnverifiedEmailUser(input: {
     const regRef = db.collection(PENDING_REGISTRATIONS_COLLECTION).doc(registrationId)
     await regRef.set(newPending)
     
-    console.log('[Database] Created pending registration:', normalizedEmail);
     return { id: registrationId, ...newPending }
     
   } catch (error) {
@@ -341,7 +340,6 @@ export async function verifyEmailToken(token: string): Promise<PendingRegistrati
       .get()
 
     if (querySnapshot.empty) {
-      console.log('[Database] Verification token not found');
       return null
     }
 
@@ -352,12 +350,10 @@ export async function verifyEmailToken(token: string): Promise<PendingRegistrati
     if (pending.verificationTokenExpiry) {
       const now = Timestamp.now()
       if (now > pending.verificationTokenExpiry) {
-        console.log('[Database] Verification token expired');
         return null // انتهت صلاحية الرمز
       }
     }
 
-    console.log('[Database] Valid verification token found for:', pending.email);
     return pending
   } catch (error) {
     console.error("Error verifying email token:", error)
@@ -405,11 +401,9 @@ export async function markEmailAsVerified(pendingRegistrationId: string): Promis
     const userRef = db.collection(USERS_COLLECTION).doc(userId)
     await userRef.set(newUser)
     
-    console.log('[Database] User created from pending registration:', pending.email);
     
     // حذف التسجيل المعلق
     await pendingRef.delete()
-    console.log('[Database] Pending registration deleted:', pending.email);
     
     return { id: userId, ...newUser } as DbUser
     

@@ -290,6 +290,8 @@ export interface TournamentTeam {
   teamId: string
   teamName: string
   captainId: string
+  captainName?: string
+  playerNames?: string[]
   points: number
   wins: number
   draws: number

@@ -35,9 +35,7 @@ export async function sendVerificationEmail(
       `,
     }
 
-    console.log('[Mailer] Attempting to send verification email to:', email);
     await transporter.sendMail(mailOptions)
-    console.log('[Mailer] Verification email sent successfully to:', email);
     return true
   } catch (error) {
     console.error("[Mailer] Error sending verification email:", error)

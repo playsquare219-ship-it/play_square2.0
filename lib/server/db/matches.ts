@@ -206,13 +206,11 @@ export async function createMatch(input: {
         message: `تم إنشاء مباراة بين ${input.team1.name} و ${input.team2.name} في ${input.stadium || 'ملعب غير محدد'}`,
         type: "match_created",
       })
-      console.log('[Database] Notification created for match:', matchId)
     } catch (notificationError) {
       console.error('[Database] Failed to create notification for match:', matchId, notificationError)
       // لا نتوقف عن إنشاء المباراة إذا فشل الإشعار
     }
     
-    console.log('[Database] Created match:', matchId)
     return { id: matchId, ...newMatch }
   } catch (error) {
     console.error("Error creating match:", error)
@@ -231,7 +229,6 @@ export async function updateMatch(matchId: string, updates: Partial<Omit<Match, 
       updatedAt: new Date().toISOString(),
     })
     
-    console.log('[Database] Updated match:', matchId)
   } catch (error) {
     console.error("Error updating match:", error)
     throw new Error("Failed to update match")
@@ -259,7 +256,6 @@ export async function recordMatchResult(
       updatedAt: new Date().toISOString(),
     })
     
-    console.log('[Database] Recorded match result:', matchId)
   } catch (error) {
     console.error("Error recording match result:", error)
     throw new Error("Failed to record match result")
@@ -273,8 +269,6 @@ export async function cancelMatch(matchId: string): Promise<void> {
   try {
     const matchRef = db.collection(MATCHES_COLLECTION).doc(matchId)
     await matchRef.delete()
-
-    console.log('[Database] Deleted match:', matchId)
   } catch (error) {
     console.error("Error deleting match:", error)
     throw new Error("Failed to delete match")
@@ -288,8 +282,6 @@ export async function deleteMatch(matchId: string): Promise<void> {
   try {
     const matchRef = db.collection(MATCHES_COLLECTION).doc(matchId)
     await matchRef.delete()
-    
-    console.log('[Database] Deleted match:', matchId)
   } catch (error) {
     console.error("Error deleting match:", error)
     throw new Error("Failed to delete match")

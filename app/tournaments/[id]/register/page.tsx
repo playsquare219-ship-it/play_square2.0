@@ -49,7 +49,15 @@ function RegistrationWizardContent({
   const handleJoin = async () => {
     wizard.setSubmitting(true)
     try {
-      await joinTournament(tournament.id, team.id)
+      const playerNamesToSubmit = wizard.players.filter(
+        (p): p is string => typeof p === "string" && p.trim().length > 0
+      )
+
+      await joinTournament(tournament.id, team.id, {
+        teamName: wizard.teamName,
+        captainName: wizard.captainName,
+        playerNames: playerNamesToSubmit,
+      })
       setSuccess(true)
     } catch (err: any) {
       toast.error(err.message || "Failed to join tournament")

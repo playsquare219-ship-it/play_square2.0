@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/server/firebase/firestore'
 import { Timestamp } from 'firebase-admin/firestore'
+import { createMatch, getMatchRequestById } from '@/lib/server/db'
 
 const BOOKING_MATCHES_COLLECTION = 'booking_matches'
 
@@ -26,6 +27,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const sourceRequestId = requestId || matchRequestId
+    let createdMatchId: string | null = null
+
+    if (sourceRequestId) {
+      const request = await getMatchRequestById(sourceRequestId)
+      if (request?.fromTeam && request?.toTeam && request?.proposedDate) {
+        const createdMatch = await createMatch({
+          team1: request.fromTeam,
+          team2: request.toTeam,
+          stadium: request.stadium || stadiumName,
+          wilaya: request.wilaya || wilaya,
+          baladia: request.baladia || commune,
+          date: request.proposedDate,
+          createdByUserId: request.createdByUserId,
+        })
+        createdMatchId = createdMatch.id
+      }
+    }
+
     // Save booking match to Firestore
     const bookingMatchRef = await db.collection(BOOKING_MATCHES_COLLECTION).add({
       requestId: requestId || null,
@@ -37,6 +57,7 @@ export async function POST(request: NextRequest) {
       wilaya,
       commune,
       matchDetails: matchDetails || {},
+      matchId: createdMatchId,
       createdAt: Timestamp.now(),
       status: 'confirmed',
       isTeamBooking: true,
@@ -52,6 +73,7 @@ export async function POST(request: NextRequest) {
       time,
       wilaya,
       commune,
+      matchId: createdMatchId,
       createdAt: new Date().toISOString(),
       status: 'confirmed',
       isTeamBooking: true,

@@ -94,7 +94,6 @@ export async function createDirectChallenge(challenge: Omit<DirectChallenge, "id
     
     await challengeRef.set(challenge)
     
-    console.log('[Database] Created direct challenge:', challengeId)
     return { id: challengeId, ...challenge }
   } catch (error) {
     console.error("Error creating direct challenge:", error)
@@ -116,7 +115,6 @@ export async function updateDirectChallengeStatus(
       updatedAt: new Date().toISOString(),
     })
     
-    console.log('[Database] Updated direct challenge status:', challengeId, status)
   } catch (error) {
     console.error("Error updating direct challenge status:", error)
     throw new Error("Failed to update challenge status")
@@ -131,7 +129,6 @@ export async function deleteDirectChallenge(challengeId: string): Promise<void> 
     const challengeRef = db.collection(DIRECT_CHALLENGES_COLLECTION).doc(challengeId)
     await challengeRef.delete()
     
-    console.log('[Database] Deleted direct challenge:', challengeId)
   } catch (error) {
     console.error("Error deleting direct challenge:", error)
     throw new Error("Failed to delete direct challenge")

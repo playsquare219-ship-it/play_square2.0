@@ -60,11 +60,12 @@ export default function HomePage() {
     }
 
     if (activeTab === "my") {
-      const isUserMatch = userTeam
-        ? match.team1?.name === userTeam.name || match.team2?.name === userTeam.name
-        : false
+      const isUserTeamMatch =
+        Boolean(user?.teamId) &&
+        (match.team1Id === user?.teamId || match.team2Id === user?.teamId)
+
       const isCreatedByUser = match.createdByUserId === user?.id
-      return isUserMatch || isCreatedByUser
+      return isUserTeamMatch || isCreatedByUser
     }
 
     return true

@@ -120,6 +120,21 @@ const styles = {
     color: "#fff",
     padding: 0,
   },
+  homeBtn: {
+    background: CB,
+    border: `1px solid ${BD}`,
+    borderRadius: 10,
+    padding: "8px 12px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    cursor: "pointer",
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: 700,
+    fontFamily: "inherit",
+  },
   redBtn: {
     background: R,
     color: "#fff",
@@ -241,7 +256,9 @@ export default function MyBookingsPage() {
           <div style={styles.headerTitle}>My Bookings</div>
           <div style={styles.headerSub}>{bookings.length} total bookings</div>
         </div>
-        <div style={{ width: 36 }} />
+        <button style={styles.homeBtn} onClick={() => router.push('/home')}>
+          🏠 Home
+        </button>
       </div>
 
       <div style={styles.scroll}>
